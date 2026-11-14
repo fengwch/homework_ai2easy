@@ -1,0 +1,66 @@
+- generic [ref=e4]:
+  - generic [ref=e9]:
+    - generic [ref=e12] [cursor=pointer]: 组件
+    - generic [ref=e15] [cursor=pointer]: 接口
+    - generic [ref=e18] [cursor=pointer]: CSS
+    - generic [ref=e21] [cursor=pointer]: 模板
+  - generic [ref=e23]:
+    - generic [ref=e29]:
+      - generic [ref=e30]:
+        - generic [ref=e32]: 🏠
+        - generic [ref=e33]: AI作业辅导
+        - generic [ref=e34]: 登录/注册
+      - generic [ref=e35]:
+        - generic [ref=e37]:
+          - generic [ref=e38]:
+            - generic [ref=e39]:
+              - generic [ref=e40]: 手机号
+              - generic [ref=e41]: "*"
+            - generic [ref=e45]:
+              - generic: 请输入手机号
+              - spinbutton [ref=e46]
+          - generic [ref=e47]:
+            - generic [ref=e48]:
+              - generic [ref=e49]: 验证码
+              - generic [ref=e50]: "*"
+            - generic [ref=e52]:
+              - generic [ref=e55]:
+                - generic: 请输入验证码
+                - spinbutton [ref=e56]
+              - generic [ref=e59] [cursor=pointer]: 获取验证码
+        - generic [ref=e63] [cursor=pointer]:
+          - text: 我已阅读并同意
+          - generic [ref=e64]: 《用户协议》
+          - text: 和
+          - generic [ref=e65]: 《隐私政策》
+        - generic:
+          - generic:
+            - generic: 登录
+      - generic [ref=e67]: 登录即表示您同意我们的服务条款
+    - generic [ref=e73]:
+      - generic [ref=e76]: 全局属性和事件
+      - generic [ref=e78]:
+        - generic [ref=e80]: 视图容器
+        - generic [ref=e83]:
+          - generic [ref=e84]:
+            - generic [ref=e85]: view | 基本视图容器
+            - img [ref=e88]
+          - generic [ref=e89]:
+            - generic [ref=e90]: scroll-view | 可滚动视图容器
+            - img [ref=e93]
+          - generic [ref=e94]:
+            - generic [ref=e95]: swiper | 滑块视图容器
+            - img [ref=e98]
+          - generic [ref=e102]: movable
+          - generic [ref=e107]: cover
+          - generic [ref=e109]:
+            - generic [ref=e110]: list-view | 列表容器
+            - img [ref=e113]
+      - generic [ref=e116]: 基础内容
+      - generic [ref=e120]: 表单组件
+      - generic [ref=e124]: 导航
+      - generic [ref=e128]: 媒体组件
+      - generic [ref=e132]: 地图
+      - generic [ref=e136]: 画布
+      - generic [ref=e140]: 网页
+      - generic [ref=e144]: unicloud

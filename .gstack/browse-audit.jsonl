@@ -1,0 +1,8 @@
+{"ts":"2026-05-15T16:20:59.613Z","cmd":"goto","args":"http://localhost:5173/web/#/","origin":"http://localhost:5173/web/#/","durationMs":471,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-05-15T16:21:05.652Z","cmd":"snapshot","args":"-i","origin":"http://localhost:5173/web/#/","durationMs":59,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-05-15T16:21:12.357Z","cmd":"screenshot","args":"/tmp/h5-home.png","origin":"http://localhost:5173/web/#/","durationMs":84,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-05-15T16:22:09.876Z","cmd":"text","args":"","origin":"http://localhost:5173/web/#/","durationMs":6,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-05-15T16:22:22.919Z","cmd":"goto","args":"http://localhost:5173/web/#/pages/assignment/scan","origin":"http://localhost:5173/web/#/pages/assignment/scan","durationMs":3,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-05-15T16:22:25.107Z","cmd":"screenshot","args":"/Users/fengwanchang/Documents/homework_ai2easy/h5-scan.png","origin":"http://localhost:5173/web/#/pages/component/view/view","durationMs":84,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-05-15T16:24:44.250Z","cmd":"goto","args":"http://localhost:5173/web/#/pages/assignment/list","origin":"http://localhost:5173/web/#/pages/assignment/list","durationMs":1,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-05-15T16:24:46.343Z","cmd":"screenshot","args":"/Users/fengwanchang/Documents/homework_ai2easy/h5-list.png","origin":"http://localhost:5173/web/#/pages/component/view/view","durationMs":40,"status":"ok","hasCookies":false,"mode":"launched"}

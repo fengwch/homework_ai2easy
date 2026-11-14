@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><title>compass preview</title>
+<link rel="stylesheet" href="./animation.css"><style>body{margin:0;background:#eee;font-family:-apple-system,sans-serif}.phone{max-width:420px;margin:16px auto;background:#fff;min-height:90vh;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.15)}</style>
+</head><body><div class="phone"><div id="app"></div></div>
+<script>
+  window.uni = {
+    getStorageSync: (k) => localStorage.getItem(k) || '',
+    setStorageSync: (k, v) => localStorage.setItem(k, typeof v === 'string' ? v : JSON.stringify(v)),
+    showToast: (o) => console.warn('[toast]', o && o.title),
+    navigateTo: (o) => console.warn('[navigateTo]', o && o.url),
+    request(o) {
+      console.warn('[request]', o.method, o.url)
+      fetch(o.url, { method: o.method || 'GET', headers: o.header, body: o.data == null ? undefined : JSON.stringify(o.data) })
+        .then(async (r) => { let d; const t = await r.text(); try { d = JSON.parse(t) } catch (e) { d = t } o.success && o.success({ statusCode: r.status, data: d }) })
+        .catch((e) => o.fail && o.fail({ errMsg: String(e) }))
+    }
+  }
+  // 前端组件写的是 backend 的基址（本地为空），这里强制指到 8000，让 token 校验走同一个后端
+  const _fetch = window.fetch
+  window.fetch = (u, opt) => _fetch(String(u).startsWith('/api/') ? 'http://localhost:8000' + u : u, opt)
+</script>
+<script type="module" src="./main.ts"></script><script>window.__UNI_FEATURE_WXS__=false;window.addEventListener("error",e=>{document.body.dataset.err=String(e.message)});window.addEventListener("unhandledrejection",e=>{document.body.dataset.err=String(e.reason)});</script>
+</body></html>

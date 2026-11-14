@@ -1,0 +1,120 @@
+[2026-05-15T16:20:59.258Z] [debug] [vite] connecting...
+[2026-05-15T16:20:59.291Z] [debug] [vite] connected.
+[2026-05-15T16:20:59.563Z] [log] test main.uts console.log
+[2026-05-15T16:20:59.570Z] [log] [31m应用已集成uni统计，但未关联服务空间，请在uniCloud目录右键关联服务空间[0m
+[2026-05-15T16:20:59.612Z] [log] [App.onLaunch] start
+[2026-05-15T16:20:59.612Z] [log] App Launch
+[2026-05-15T16:20:59.612Z] [log] UniError: 应用已集成uni统计，但未关联服务空间，请在uniCloud目录右键关联服务空间!
+    at http://localhost:5173/web/uni_modules/uni-stat/utssdk/index.uts?import:18:23
+    at Stat.appEvent (http://localhost:5173/web/uni_modules/uni-stat/utssdk/common/core/stat.uts?import:219:13)
+    at report (http://localhost:5173/web/uni_modules/uni-stat/utssdk/index.uts?import:8:10)
+    at Proxy.onLaunch (http://localhost:5173/web/App.uvue?import&vue&type=script&lang.uts:47:9)
+    at callWithErrorHandling (http://localhost:5173/web/@fs/Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-h5-vue/dist-x/vue.runtime.esm.js:1381:19)
+    at callWithAsyncErrorHandling (http://localhost:5173/web/@fs/Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-h5-vue/dist-x/vue.runtime.esm.js:1388:17)
+    at hook.__weh.hook.__weh (http://localhost:5173/web/@fs/Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-h5-vue/dist-x/vue.runtime.esm.js:4141:19)
+    at invokeArrayFns (http://localhost:5173/web/@fs/Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@vue/shared/dist/shared.esm-bundler.js:78:11)
+    at onLaunch (http://localhost:5173/web/@fs/Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-h5/dist-x/uni-h5.es.js:9636:22)
+[2026-05-15T16:20:59.612Z] [log] App Show
+[2026-05-15T16:20:59.613Z] [log] UniError: 应用已集成uni统计，但未关联服务空间，请在uniCloud目录右键关联服务空间!
+    at http://localhost:5173/web/uni_modules/uni-stat/utssdk/index.uts?import:18:23
+    at Stat.appEvent (http://localhost:5173/web/uni_modules/uni-stat/utssdk/common/core/stat.uts?import:219:13)
+    at report (http://localhost:5173/web/uni_modules/uni-stat/utssdk/index.uts?import:8:10)
+    at Proxy.onShow (http://localhost:5173/web/App.uvue?import&vue&type=script&lang.uts:69:9)
+    at callWithErrorHandling (http://localhost:5173/web/@fs/Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-h5-vue/dist-x/vue.runtime.esm.js:1381:19)
+    at callWithAsyncErrorHandling (http://localhost:5173/web/@fs/Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-h5-vue/dist-x/vue.runtime.esm.js:1388:17)
+    at hook.__weh.hook.__weh (http://localhost:5173/web/@fs/Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-h5-vue/dist-x/vue.runtime.esm.js:4141:19)
+    at invokeArrayFns (http://localhost:5173/web/@fs/Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@vue/shared/dist/shared.esm-bundler.js:78:11)
+    at onLaunch (http://localhost:5173/web/@fs/Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-h5/dist-x/uni-h5.es.js:9637:19)
+[2026-05-15T16:20:59.613Z] [log] Preload pages in uni-app-x development mode.
+[2026-05-15T16:20:59.763Z] [error] [GtPush] [register fail: {"errorCode":1,"errorMsg":""}]
+[2026-05-15T16:20:59.763Z] [error] register fail: {"errorCode":1,"errorMsg":""}
+[2026-05-15T16:28:44.389Z] [debug] [vite] hot updated: /components/common/a-status-badge.uvue
+[2026-05-15T16:28:44.389Z] [debug] [vite] hot updated: /components/common/a-status-badge.uvue?vue&type=style&index=0&scoped=fc831a85&lang.scss
+[2026-05-15T16:30:29.488Z] [debug] [vite] hot updated: /components/common/a-empty-state.uvue?vue&type=style&index=0&scoped=02122aed&lang.scss
+[2026-05-15T16:30:29.488Z] [debug] [vite] hot updated: /components/common/a-empty-state.uvue
+[2026-05-15T16:30:46.142Z] [debug] [vite] hot updated: /components/common/a-form-field.uvue?vue&type=style&index=0&scoped=fcdb7ab0&lang.scss
+[2026-05-15T16:34:40.008Z] [debug] [vite] hot updated: /pages/auth/login.uvue
+[2026-05-15T16:34:40.008Z] [debug] [vite] hot updated: /pages/auth/login.uvue?vue&type=style&index=0&scoped=2974d8ce&lang.scss
+[2026-05-15T16:34:40.418Z] [debug] [vite] hot updated: /pages/assignment/scan.uvue
+[2026-05-15T16:34:40.418Z] [debug] [vite] hot updated: /pages/assignment/scan.uvue?vue&type=style&index=0&scoped=203513a7&lang.scss
+[2026-05-15T16:34:40.689Z] [debug] [vite] hot updated: /pages/assignment/list.uvue
+[2026-05-15T16:34:40.689Z] [debug] [vite] hot updated: /pages/assignment/list.uvue?vue&type=style&index=0&scoped=33548417&lang.scss
+[2026-05-15T16:34:48.825Z] [log] App Hide
+[2026-05-15T16:34:48.826Z] [log] UniError: 应用已集成uni统计，但未关联服务空间，请在uniCloud目录右键关联服务空间!
+    at http://localhost:5173/web/uni_modules/uni-stat/utssdk/index.uts?import:18:23
+    at Stat.appEvent (http://localhost:5173/web/uni_modules/uni-stat/utssdk/common/core/stat.uts?import:219:13)
+    at report (http://localhost:5173/web/uni_modules/uni-stat/utssdk/index.uts?import:8:10)
+    at Proxy.onHide (http://localhost:5173/web/App.uvue?import&vue&type=script&lang.uts:82:9)
+    at callWithErrorHandling (http://localhost:5173/web/@fs/Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-h5-vue/dist-x/vue.runtime.esm.js:1381:19)
+    at callWithAsyncErrorHandling (http://localhost:5173/web/@fs/Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-h5-vue/dist-x/vue.runtime.esm.js:1388:17)
+    at hook.__weh.hook.__weh (http://localhost:5173/web/@fs/Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-h5-vue/dist-x/vue.runtime.esm.js:4141:19)
+    at invokeArrayFns (http://localhost:5173/web/@fs/Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-shared/dist/uni-shared.es.js:441:17)
+    at invokeHook (http://localhost:5173/web/@fs/Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-h5/dist-x/uni-h5.es.js:1734:19)
+    at onAppEnterBackground (http://localhost:5173/web/@fs/Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-h5/dist-x/uni-h5.es.js:2312:3)
+[2026-05-15T16:34:48.965Z] [debug] [vite] connecting...
+[2026-05-15T16:34:49.069Z] [debug] [vite] connected.
+[2026-05-15T16:34:49.302Z] [log] test main.uts console.log
+[2026-05-15T16:34:49.302Z] [log] [31m应用已集成uni统计，但未关联服务空间，请在uniCloud目录右键关联服务空间[0m
+[2026-05-15T16:34:49.319Z] [log] [App.onLaunch] start
+[2026-05-15T16:34:49.319Z] [log] App Launch
+[2026-05-15T16:34:49.320Z] [log] UniError: 应用已集成uni统计，但未关联服务空间，请在uniCloud目录右键关联服务空间!
+    at http://localhost:5173/web/uni_modules/uni-stat/utssdk/index.uts?import:18:23
+    at Stat.appEvent (http://localhost:5173/web/uni_modules/uni-stat/utssdk/common/core/stat.uts?import:219:13)
+    at report (http://localhost:5173/web/uni_modules/uni-stat/utssdk/index.uts?import:8:10)
+    at Proxy.onLaunch (http://localhost:5173/web/App.uvue?import&vue&type=script&lang.uts:47:9)
+    at callWithErrorHandling (http://localhost:5173/web/@fs/Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-h5-vue/dist-x/vue.runtime.esm.js:1381:19)
+    at callWithAsyncErrorHandling (http://localhost:5173/web/@fs/Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-h5-vue/dist-x/vue.runtime.esm.js:1388:17)
+    at hook.__weh.hook.__weh (http://localhost:5173/web/@fs/Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-h5-vue/dist-x/vue.runtime.esm.js:4141:19)
+    at invokeArrayFns (http://localhost:5173/web/@fs/Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@vue/shared/dist/shared.esm-bundler.js:78:11)
+    at onLaunch (http://localhost:5173/web/@fs/Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-h5/dist-x/uni-h5.es.js:9636:22)
+[2026-05-15T16:34:49.320Z] [log] App Show
+[2026-05-15T16:34:49.322Z] [log] UniError: 应用已集成uni统计，但未关联服务空间，请在uniCloud目录右键关联服务空间!
+    at http://localhost:5173/web/uni_modules/uni-stat/utssdk/index.uts?import:18:23
+    at Stat.appEvent (http://localhost:5173/web/uni_modules/uni-stat/utssdk/common/core/stat.uts?import:219:13)
+    at report (http://localhost:5173/web/uni_modules/uni-stat/utssdk/index.uts?import:8:10)
+    at Proxy.onShow (http://localhost:5173/web/App.uvue?import&vue&type=script&lang.uts:69:9)
+    at callWithErrorHandling (http://localhost:5173/web/@fs/Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-h5-vue/dist-x/vue.runtime.esm.js:1381:19)
+    at callWithAsyncErrorHandling (http://localhost:5173/web/@fs/Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-h5-vue/dist-x/vue.runtime.esm.js:1388:17)
+    at hook.__weh.hook.__weh (http://localhost:5173/web/@fs/Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-h5-vue/dist-x/vue.runtime.esm.js:4141:19)
+    at invokeArrayFns (http://localhost:5173/web/@fs/Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@vue/shared/dist/shared.esm-bundler.js:78:11)
+    at onLaunch (http://localhost:5173/web/@fs/Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-h5/dist-x/uni-h5.es.js:9637:19)
+[2026-05-15T16:34:49.322Z] [log] Preload pages in uni-app-x development mode.
+[2026-05-15T16:34:49.518Z] [error] [GtPush] [register fail: {"errorCode":1,"errorMsg":""}]
+[2026-05-15T16:34:49.518Z] [error] register fail: {"errorCode":1,"errorMsg":""}
+[2026-05-15T16:35:19.635Z] [log] [vite] server connection lost. polling for restart...
+[2026-05-15T16:35:19.823Z] [error] Failed to load resource: the server responded with a status of 404 (Not Found)
+[2026-05-15T16:35:19.892Z] [log] App Hide
+[2026-05-15T16:35:19.892Z] [log] UniError: 应用已集成uni统计，但未关联服务空间，请在uniCloud目录右键关联服务空间!
+    at http://localhost:5173/web/uni_modules/uni-stat/utssdk/index.uts?import:18:23
+    at Stat.appEvent (http://localhost:5173/web/uni_modules/uni-stat/utssdk/common/core/stat.uts?import:219:13)
+    at report (http://localhost:5173/web/uni_modules/uni-stat/utssdk/index.uts?import:8:10)
+    at Proxy.onHide (http://localhost:5173/web/App.uvue?import&vue&type=script&lang.uts:82:9)
+    at callWithErrorHandling (http://localhost:5173/web/@fs/Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-h5-vue/dist-x/vue.runtime.esm.js:1381:19)
+    at callWithAsyncErrorHandling (http://localhost:5173/web/@fs/Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-h5-vue/dist-x/vue.runtime.esm.js:1388:17)
+    at hook.__weh.hook.__weh (http://localhost:5173/web/@fs/Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-h5-vue/dist-x/vue.runtime.esm.js:4141:19)
+    at invokeArrayFns (http://localhost:5173/web/@fs/Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-shared/dist/uni-shared.es.js:441:17)
+    at invokeHook (http://localhost:5173/web/@fs/Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-h5/dist-x/uni-h5.es.js:1734:19)
+    at onAppEnterBackground (http://localhost:5173/web/@fs/Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-h5/dist-x/uni-h5.es.js:2312:3)
+[2026-05-15T16:35:19.927Z] [debug] [vite] connecting...
+[2026-05-15T16:35:20.042Z] [debug] [vite] connected.
+[2026-05-15T16:35:20.109Z] [warning] [Vue Router warn]: No match found for location with path "/web/#/pages/component/view/view"
+[2026-05-15T16:35:20.114Z] [log] code:  undefined
+[2026-05-15T16:35:20.114Z] [log] token:  null
+[2026-05-15T16:35:20.114Z] [log] to {fullPath: /web/#/pages/component/view/view, path: /web/, query: Object, hash: #/pages/component/view/view, name: undefined}
+[2026-05-15T16:35:20.115Z] [log] 认证通过，跳转页面:  /web/
+[2026-05-15T16:49:18.283Z] [log] [vite] server connection lost. Polling for restart...
+[2026-05-15T16:49:18.316Z] [debug] [vite] connecting...
+[2026-05-15T16:49:18.323Z] [debug] [vite] connected.
+[2026-05-15T16:49:18.326Z] [warning] [Vue Router warn]: No match found for location with path "/web/#/pages/component/view/view"
+[2026-05-15T16:49:18.331Z] [log] code:  undefined
+[2026-05-15T16:49:18.331Z] [log] token:  dev-mock-token
+[2026-05-15T16:49:18.331Z] [log] to {fullPath: /web/#/pages/component/view/view, path: /web/, query: Object, hash: #/pages/component/view/view, name: undefined}
+[2026-05-15T16:49:18.331Z] [log] 认证通过，跳转页面:  /web/
+[2026-05-15T16:50:06.553Z] [log] [vite] server connection lost. Polling for restart...
+[2026-05-15T16:50:06.570Z] [debug] [vite] connecting...
+[2026-05-15T16:50:06.574Z] [debug] [vite] connected.
+[2026-05-15T16:50:06.598Z] [warning] [Vue Router warn]: No match found for location with path "/web/#/pages/component/view/view"
+[2026-05-15T16:50:06.599Z] [log] code:  undefined
+[2026-05-15T16:50:06.599Z] [log] token:  dev-mock-token
+[2026-05-15T16:50:06.599Z] [log] to {fullPath: /web/#/pages/component/view/view, path: /web/, query: Object, hash: #/pages/component/view/view, name: undefined}
+[2026-05-15T16:50:06.599Z] [log] 认证通过，跳转页面:  /web/

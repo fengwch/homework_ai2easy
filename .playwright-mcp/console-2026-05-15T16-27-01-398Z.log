@@ -1,0 +1,30 @@
+[     134ms] [LOG] test main.uts console.log @ http://localhost:5173/web/test-main-console.uts?import:3
+[     138ms] [LOG] [31m应用已集成uni统计，但未关联服务空间，请在uniCloud目录右键关联服务空间[0m @ http://localhost:5173/web/uni_modules/uni-stat/utssdk/common/core/stat.uts?import:40
+[     158ms] [LOG] [App.onLaunch] start @ http://localhost:5173/web/App.uvue?import&vue&type=script&lang.uts:41
+[     158ms] [LOG] App Launch @ http://localhost:5173/web/App.uvue?import&vue&type=script&lang.uts:44
+[     159ms] [LOG] UniError: 应用已集成uni统计，但未关联服务空间，请在uniCloud目录右键关联服务空间!
+    at http://localhost:5173/web/uni_modules/uni-stat/utssdk/index.uts?import:18:23
+    at Stat.appEvent (http://localhost:5173/web/uni_modules/uni-stat/utssdk/common/core/stat.uts?import:219:13)
+    at report (http://localhost:5173/web/uni_modules/uni-stat/utssdk/index.uts?import:8:10)
+    at Proxy.onLaunch (http://localhost:5173/web/App.uvue?import&vue&type=script&lang.uts:47:9)
+    at callWithErrorHandling (http://localhost:5173/web/@fs/Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-h5-vue/dist-x/vue.runtime.esm.js:1381:19)
+    at callWithAsyncErrorHandling (http://localhost:5173/web/@fs/Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-h5-vue/dist-x/vue.runtime.esm.js:1388:17)
+    at hook.__weh.hook.__weh (http://localhost:5173/web/@fs/Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-h5-vue/dist-x/vue.runtime.esm.js:4141:19)
+    at invokeArrayFns (http://localhost:5173/web/@fs/Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@vue/shared/dist/shared.esm-bundler.js:78:11)
+    at onLaunch (http://localhost:5173/web/@fs/Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-h5/dist-x/uni-h5.es.js:9636:22) @ http://localhost:5173/web/App.uvue?import&vue&type=script&lang.uts:53
+[     159ms] [LOG] App Show @ http://localhost:5173/web/App.uvue?import&vue&type=script&lang.uts:67
+[     159ms] [LOG] UniError: 应用已集成uni统计，但未关联服务空间，请在uniCloud目录右键关联服务空间!
+    at http://localhost:5173/web/uni_modules/uni-stat/utssdk/index.uts?import:18:23
+    at Stat.appEvent (http://localhost:5173/web/uni_modules/uni-stat/utssdk/common/core/stat.uts?import:219:13)
+    at report (http://localhost:5173/web/uni_modules/uni-stat/utssdk/index.uts?import:8:10)
+    at Proxy.onShow (http://localhost:5173/web/App.uvue?import&vue&type=script&lang.uts:69:9)
+    at callWithErrorHandling (http://localhost:5173/web/@fs/Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-h5-vue/dist-x/vue.runtime.esm.js:1381:19)
+    at callWithAsyncErrorHandling (http://localhost:5173/web/@fs/Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-h5-vue/dist-x/vue.runtime.esm.js:1388:17)
+    at hook.__weh.hook.__weh (http://localhost:5173/web/@fs/Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-h5-vue/dist-x/vue.runtime.esm.js:4141:19)
+    at invokeArrayFns (http://localhost:5173/web/@fs/Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@vue/shared/dist/shared.esm-bundler.js:78:11)
+    at onLaunch (http://localhost:5173/web/@fs/Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-h5/dist-x/uni-h5.es.js:9637:19) @ http://localhost:5173/web/App.uvue?import&vue&type=script&lang.uts:74
+[     159ms] [LOG] Preload pages in uni-app-x development mode. @ http://localhost:5173/web/@fs/Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-h5/dist-x/uni-h5.es.js:24760
+[     225ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:5173/favicon.ico:0
+[     314ms] [ERROR] [GtPush] [register fail: {"errorCode":1,"errorMsg":""}] @ http://localhost:5173/web/@fs/Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-push/dist/uni-push.es.js:9
+[     314ms] [ERROR] register fail: {"errorCode":1,"errorMsg":""} @ http://localhost:5173/web/@fs/Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-push/dist/uni-push.es.js:197
+[   11220ms] [WARNING] [GtPush] [already connected] @ http://localhost:5173/web/@fs/Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/@dcloudio/uni-push/dist/uni-push.es.js:9

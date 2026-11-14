@@ -1,0 +1,90 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>首页 改后</title>
+<style>
+body{margin:0;background:#dcdcdc;font-family:-apple-system,"PingFang SC",sans-serif;color:#333}
+.wrap{display:flex;justify-content:center;padding:24px;gap:24px;flex-wrap:wrap}
+.phone{width:375px;background:#f5f5f5;border-radius:18px;overflow:hidden;box-shadow:0 6px 24px rgba(0,0,0,.2);position:relative}
+.nav{background:#fff;text-align:center;padding:14px;font-size:16px;font-weight:600;border-bottom:1px solid #eee}
+.body{padding:16px}
+.header-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.welcome{font-size:15px;color:#666}
+.switcher{font-size:12px;background:#eef;padding:4px 8px;border-radius:8px;color:#667eea}
+.bench{background:#fff;border-radius:16px;padding:14px;margin-bottom:12px}
+.bench-title{font-size:12px;color:#999;margin-bottom:10px;letter-spacing:1px}
+.cards2{display:flex;gap:12px}
+.cardbig{flex:1;background:#f7f8ff;border:1px solid #dde0ff;border-radius:12px;padding:14px;text-align:center;min-height:118px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}
+.icon{width:36px;height:36px;border-radius:10px;background:#667eea;position:relative}
+.icon.list{background:#11998e}
+.icon::after{content:"";position:absolute;inset:9px;border:2.5px solid #fff;border-radius:5px}
+.icon.list::after{border-top-width:8px}
+.cardbig .t{font-size:15px;font-weight:600}
+.cardbig .s{font-size:12px;color:#888}
+.gen{margin-top:12px;display:flex;align-items:center;justify-content:space-between;background:#f7f8ff;border:1px solid #dde0ff;border-radius:12px;padding:12px 14px}
+.gen.disabled{background:#f2f2f2;border-color:#e5e5e5;color:#aaa}
+.gen .t{font-size:14px;font-weight:600}
+.gen .who{font-size:12px;color:#888}
+.gen.disabled .who{color:#bbb}
+.arrow{font-size:16px;color:#667eea}
+.gen.disabled .arrow{color:#ccc}
+.card{background:#fff;border-radius:16px;padding:14px;margin-bottom:12px;border:1px solid #eee;position:relative}
+.card.active{border:2px solid #667eea;background:#f4f5ff}
+.badge{position:absolute;top:8px;right:8px;width:22px;height:22px;border-radius:50%;background:#667eea;color:#fff;font-size:13px;display:flex;align-items:center;justify-content:center}
+.row{display:flex;gap:12px;align-items:center}
+.avatar{width:48px;height:48px;border-radius:50%;background:#c7d2fe;display:flex;align-items:center;justify-content:center;font-weight:700;color:#3730a3}
+.name{font-size:16px;font-weight:700}
+.grade{font-size:13px;color:#999}
+.edit{margin-left:auto;width:88px;display:flex;justify-content:flex-end}
+.edit button{width:88px;height:44px;border-radius:8px;border:1px solid #ddd;background:#fff;color:#666;font-size:13px}
+.skel{background:#fff;border-radius:16px;padding:14px;margin-bottom:12px;display:flex;gap:12px;align-items:center}
+.gray{background:#eee;border-radius:6px}
+.tabbar{display:flex;border-top:1px solid #eee;background:#fff}
+.tab{flex:1;text-align:center;padding:10px;font-size:12px;color:#999}
+.tab.on{color:#667eea}
+.tag{position:absolute;top:8px;left:8px;background:#667eea;color:#fff;font-size:11px;padding:2px 6px;border-radius:6px}
+.note{font-size:12px;color:#666;line-height:1.75;background:#fff;padding:12px;border-radius:10px}
+</style></head><body>
+<div class="wrap">
+ <div class="phone">
+  <div class="tag">改后</div>
+  <div class="nav">首页</div>
+  <div class="body">
+   <div class="header-top"><span class="welcome">欢迎，家长</span><span class="switcher">小宇 ▾</span></div>
+   <div class="bench">
+     <div class="bench-title">作业工作台</div>
+     <div class="cards2">
+       <div class="cardbig"><div class="icon"></div><div class="t">上传作业</div><div class="s">拍照或从相册选择</div></div>
+       <div class="cardbig"><div class="icon list"></div><div class="t">查看作业列表</div><div class="s">历史作业与辅导</div></div>
+     </div>
+     <div class="gen"><div><div class="t">作业目标生成器</div><div class="who">当前孩子：小宇</div></div><div class="arrow">›</div></div>
+   </div>
+   <div class="card active">
+     <div class="badge">✓</div>
+     <div class="row"><div class="avatar">小</div><div><div class="name">小宇</div><div class="grade">三年级</div></div><div class="edit"><button>编辑</button></div></div>
+   </div>
+   <div class="card">
+     <div class="row"><div class="avatar" style="background:#fde68a;color:#92400e">朵</div><div><div class="name">小朵</div><div class="grade">未设置年级</div></div><div class="edit"><button>编辑</button></div></div>
+   </div>
+  </div>
+  <div class="tabbar"><div class="tab on">🏠 首页</div><div class="tab">➕ 添加小孩</div><div class="tab">👤 我的</div></div>
+ </div>
+
+ <div class="phone">
+  <div class="tag">改后 · 未选孩子</div>
+  <div class="nav">首页</div>
+  <div class="body">
+   <div class="header-top"><span class="welcome">欢迎，家长</span><span class="switcher">选择孩子 ▾</span></div>
+   <div class="bench">
+     <div class="bench-title">作业工作台</div>
+     <div class="cards2">
+       <div class="cardbig"><div class="icon"></div><div class="t">上传作业</div><div class="s">拍照或从相册选择</div></div>
+       <div class="cardbig"><div class="icon list"></div><div class="t">查看作业列表</div><div class="s">历史作业与辅导</div></div>
+     </div>
+     <div class="gen disabled"><div><div class="t">作业目标生成器</div><div class="who">请先选择孩子</div></div><div class="arrow">›</div></div>
+   </div>
+   <div class="skel"><div class="gray" style="width:48px;height:48px;border-radius:50%"></div><div style="flex:1"><div class="gray" style="height:14px;width:60%;margin-bottom:8px"></div><div class="gray" style="height:12px;width:40%"></div></div></div>
+   <div class="skel"><div class="gray" style="width:48px;height:48px;border-radius:50%"></div><div style="flex:1"><div class="gray" style="height:14px;width:50%;margin-bottom:8px"></div><div class="gray" style="height:12px;width:35%"></div></div></div>
+   <div class="note">加载中显示骨架卡（不显示「还没有添加孩子」）；加载失败显示错误文案 + 重试；无孩子显示空态并引导到底部「添加小孩」。</div>
+  </div>
+  <div class="tabbar"><div class="tab on">🏠 首页</div><div class="tab">➕ 添加小孩</div><div class="tab">👤 我的</div></div>
+ </div>
+</div>
+</body></html>

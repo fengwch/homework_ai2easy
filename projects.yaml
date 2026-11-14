@@ -1,0 +1,66 @@
+# homework_ai2easy super agent 注册表
+# 形态说明：本目录【不是】标准 monorepo——根目录无 git，
+# agent / app / backend / HomeworkCompass 各自是独立 git 仓库（多仓库工作区）。
+# 因此这里用 repos 平铺（version 2 的 repos 级即各子仓库），分支纪律按仓库各自生效。
+# 各子项目的详细纪律见各自的 CLAUDE.md（dsh 自动读取），本表只登记调度信息。
+
+version: 2
+workspace:
+  id: homework-ai2easy
+  path: /Users/fengwanchang/Documents/homework_ai2easy
+  root_git: false                      # 根目录非 git 仓库
+  secrets: none                        # 个人/家庭项目；但 DASHSCOPE_API_KEY 等密钥仍只走环境变量
+  # 跨仓库调用契约（改任何一端必须三端协调，见 contract-check skill）
+  call_chain: "app(uni-app x) --HTTP--> backend(Go Kratos) --HTTP:8011--> agent(Python FastAPI)"
+  standalone: "HomeworkCompass（CLI/HTTP 服务，app 五屏流程对接其目标图能力）"
+
+repos:
+  - id: backend
+    path: backend                      # 相对 workspace.path
+    role: main                         # 主服务：业务 + 编排
+    stack: "Go (Kratos v2) + MySQL + Redis + JWT/微信/短信登录 + gRPC/HTTP 双协议"
+    branch: master
+    commands:
+      check: "git status --short && git log --oneline -3"
+      test: "make test"                # = test-unit + test-api
+      lint: "make build-fast"          # 编译通过即最基本的正确性验证
+      run: "make dev"                  # 开发配置 configs/config.dev.yaml
+    rules: "改 proto 必须走 make api 再 make wire；禁直接手写 wire_gen.go"
+
+  - id: agent
+    path: agent
+    role: service                      # AI 能力层：OCR/故事/解题/语音/插画
+    stack: "Python FastAPI + uvicorn/gunicorn，被 backend 经 HTTP:8011 调用"
+    branch: master
+    commands:
+      check: "git status --short && git log --oneline -3"
+      test: "pytest"
+      run: "python -m uvicorn api.main:app --host 0.0.0.0 --port 8011"
+    rules: "端口 8011 固定；对外只被 backend 调用，不直接暴露给 app"
+
+  - id: app
+    path: app
+    role: client                       # 多端客户端
+    stack: "uni-app x (uni-app 2.0) + Vue3 Composition API + TS + Vite，HBuilderX 构建；主平台 H5 + 微信小程序"
+    branch: master
+    commands:
+      check: "git status --short && git log --oneline -3"
+      test: "cd frontend && npx jest"
+    rules: "无标准 npm run dev，构建走 HBuilderX（v3.99+）；禁止直连 agent，一律走 backend HTTP"
+
+  - id: compass
+    path: HomeworkCompass
+    role: tool                         # 独立工具：作业解析→机械校验→A4 渲染
+    stack: "Python >=3.13 CLI(hw) + 可选 FastAPI 服务；Pillow；零杜撰/零遗漏/pending 非空拒出图"
+    branch: main
+    commands:
+      check: "git status --short && git log --oneline -3"
+      test: "python3 -m pytest"
+    rules: "DASHSCOPE_API_KEY 只从环境变量读；pending 非空时拒绝出图是硬校验，不许绕过"
+
+profiles_hint:                         # 建议 $DSH_HOME/profiles/ 下建 5 个 profile
+  - "hw-root     全仓任务/跨仓契约变更（在本目录启动）"
+  - "hw-backend  backend 子仓任务，重模型"
+  - "hw-agent    agent 子仓任务"
+  - "hw-app      app 子仓任务（前端轻任务可走本地模型）"
+  - "hw-compass  compass 子仓任务"

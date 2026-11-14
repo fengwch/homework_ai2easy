@@ -1,0 +1,65 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>首页 现状</title>
+<style>
+body{margin:0;background:#dcdcdc;font-family:-apple-system,"PingFang SC",sans-serif;color:#333}
+.wrap{display:flex;justify-content:center;padding:24px;gap:24px}
+.phone{width:375px;background:#f5f5f5;border-radius:18px;overflow:hidden;box-shadow:0 6px 24px rgba(0,0,0,.2)}
+.nav{background:#fff;text-align:center;padding:14px;font-size:16px;font-weight:600;border-bottom:1px solid #eee}
+.body{padding:16px}
+.header-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.welcome{font-size:15px;color:#666}
+.switcher{font-size:12px;background:#eef;padding:4px 8px;border-radius:8px;color:#667eea}
+.list-btn{display:flex;gap:8px;align-items:center;justify-content:center;background:#fff;border:1px solid #667eea;color:#667eea;border-radius:8px;padding:12px;margin-bottom:16px;font-size:14px}
+.card{background:#fff;border-radius:16px;padding:14px;margin-bottom:12px;border:1px solid #eee}
+.card.active{border:2px solid #667eea;background:#f4f5ff}
+.row{display:flex;gap:12px;align-items:center}
+.avatar{width:48px;height:48px;border-radius:50%;background:#c7d2fe;display:flex;align-items:center;justify-content:center;font-weight:700;color:#3730a3}
+.name{font-size:16px;font-weight:700}
+.grade{font-size:13px;color:#999}
+.actions{display:flex;gap:8px;margin-top:10px}
+.btn{padding:6px 12px;border-radius:8px;font-size:12px;border:none;color:#fff;background:#667eea}
+.btn.green{background:#11998e}
+.btn.gray{background:#eee;color:#666}
+.tabbar{display:flex;border-top:1px solid #eee;background:#fff}
+.tab{flex:1;text-align:center;padding:10px;font-size:12px;color:#999}
+.tab.on{color:#667eea}
+.tag{position:absolute;background:#ffb020;color:#000;font-size:11px;padding:2px 6px;border-radius:6px;right:20px}
+</style></head><body>
+<div class="wrap">
+ <div class="phone" style="position:relative">
+  <div class="tag">现状</div>
+  <div class="nav">首页</div>
+  <div class="body">
+   <div class="header-top"><span class="welcome">欢迎，家长</span><span class="switcher">小宇 ▾</span></div>
+   <div class="list-btn">📚 查看作业列表</div>
+   <div class="card active">
+     <div class="row"><div class="avatar">小</div><div><div class="name">小宇</div><div class="grade">三年级</div></div></div>
+     <div class="actions"><button class="btn">📷 上传作业</button><button class="btn gray">编辑小孩信息</button></div>
+   </div>
+   <div class="card">
+     <div class="row"><div class="avatar" style="background:#fde68a;color:#92400e">朵</div><div><div class="name">小朵</div><div class="grade">未设置年级</div></div></div>
+     <div class="actions"><button class="btn">📷 上传作业</button><button class="btn gray">编辑小孩信息</button></div>
+   </div>
+  </div>
+  <div class="tabbar"><div class="tab on">🏠 首页</div><div class="tab">➕ 添加小孩</div><div class="tab">👤 我的</div></div>
+ </div>
+ <div class="phone" style="position:relative">
+  <div class="tag">问题</div>
+  <div class="nav">首页</div>
+  <div class="body">
+   <div class="header-top"><span class="welcome">欢迎，家长</span><span class="switcher">小宇 ▾</span></div>
+   <div class="list-btn">📚 查看作业列表</div>
+   <div class="card active">
+     <div class="row"><div class="avatar">小</div><div><div class="name">小宇</div><div class="grade">三年级</div></div></div>
+     <div class="actions"><button class="btn">📷 上传作业</button><button class="btn gray">编辑小孩信息</button></div>
+   </div>
+   <div style="font-size:12px;color:#b02a37;line-height:1.7;background:#fff3f3;padding:10px;border-radius:8px">
+     · 上传/作业列表入口挂在每张孩子卡片上，孩子越多入口越多
+     · 选中态只靠一条边框，和普通卡片区分不明显
+     · 卡片按钮用 emoji，触控区偏小（约 32px 高）
+     · 加载中/失败/空态没有骨架或重试
+   </div>
+  </div>
+  <div class="tabbar"><div class="tab on">🏠 首页</div><div class="tab">➕ 添加小孩</div><div class="tab">👤 我的</div></div>
+ </div>
+</div>
+</body></html>

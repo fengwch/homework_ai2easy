@@ -1,0 +1,13 @@
+- generic [ref=e3]:
+  - generic [ref=e4]: "[plugin:vite:import-analysis] Failed to resolve import \"vue\" from \"main.uts\". Does the file exist?"
+  - generic [ref=e5]: /Users/fengwanchang/Documents/homework_ai2easy/app/frontend/main.uts:5:35
+  - generic [ref=e6]: "3 | import App from './App.uvue' 4 | 5 | import { createSSRApp } from 'vue' | ^ 6 | 7 | export function createApp() {"
+  - generic [ref=e7]: at formatError (file:///Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/vite/dist/node/chunks/dep-whKeNLxG.js:50863:46) at TransformContext.error (file:///Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/vite/dist/node/chunks/dep-whKeNLxG.js:50857:19) at normalizeUrl (file:///Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/vite/dist/node/chunks/dep-whKeNLxG.js:66092:33) at async file:///Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/vite/dist/node/chunks/dep-whKeNLxG.js:66247:47 at async Promise.all (index 2) at async TransformContext.transform (file:///Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/vite/dist/node/chunks/dep-whKeNLxG.js:66168:13) at async Object.transform (file:///Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/vite/dist/node/chunks/dep-whKeNLxG.js:51172:30) at async loadAndTransform (file:///Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/vite/dist/node/chunks/dep-whKeNLxG.js:53923:29) at async viteTransformMiddleware (file:///Applications/HBuilderX.app/Contents/HBuilderX/plugins/uniapp-cli-vite/node_modules/vite/dist/node/chunks/dep-whKeNLxG.js:63775:32
+  - generic [ref=e8]:
+    - text: Click outside, press Esc key, or fix the code to dismiss.You can also disable this overlay by setting
+    - code [ref=e9]: server.hmr.overlay
+    - text: to
+    - code [ref=e10]: "false"
+    - text: in
+    - code [ref=e11]: vite.h5.config.cjs
+    - text: .
