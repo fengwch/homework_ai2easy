@@ -1,0 +1,65 @@
+syntax = "proto3";
+
+package api.file.v1;
+
+import "google/api/annotations.proto";
+
+option go_package = "homework_ai2easy/backend/api/file/v1;v1";
+
+// 文件服务 — 通用文件上传，不绑定特定业务实体
+service FileService {
+  // 通用文件上传
+  rpc UploadFile (UploadFileRequest) returns (UploadFileReply) {
+    option (google.api.http) = {
+      post: "/api/v1/files/upload"
+      body: "*"
+    };
+  }
+  // 查看指定目录的文件列表
+  rpc ListFiles (ListFilesRequest) returns (ListFilesReply) {
+    option (google.api.http) = {
+      get: "/api/v1/files"
+    };
+  }
+}
+
+message ListFilesRequest {
+  string directory = 1;  // 可选，子目录路径，如 "images"；为空时列出 files/ 根目录
+}
+
+message ListFilesReply {
+  int32 code = 1;
+  string message = 2;
+  ListFilesData data = 3;
+}
+
+message ListFilesData {
+  repeated FileItem items = 1;
+  string directory = 2;  // 实际列出的目录
+}
+
+message FileItem {
+  string name = 1;       // 文件名
+  int64 size = 2;        // 文件大小（字节）
+  string mod_time = 3;   // 修改时间 RFC3339
+  bool is_dir = 4;       // 是否为目录
+}
+
+// 上传文件请求（multipart/form-data，由 MultipartAwareRequestDecoder 解析）
+message UploadFileRequest {
+  bytes file = 1;        // 文件内容（multipart decoder 从表单字段 file 读取并填充）
+  string directory = 2;  // 可选，目标子目录，如 "images" 或 "documents/reports"
+}
+
+// 上传文件响应
+message UploadFileReply {
+  int32 code = 1;
+  string message = 2;
+  UploadFileData data = 3;
+}
+
+message UploadFileData {
+  string url = 1;       // 可访问的相对路径，如 /uploads/files/images/abc123.jpg
+  string filename = 2;  // 原始文件名
+  int64 size = 3;       // 文件大小（字节）
+}

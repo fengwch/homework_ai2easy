@@ -1,0 +1,9 @@
+# HomeworkCompass 运行依赖（生产环境）
+# 安装：python3 -m pip install -r requirements.txt
+# 适用于 HTTP 服务与 CLI 两种形态；开发测试依赖见 requirements-dev.txt
+Pillow>=12.0
+fastapi>=0.115
+uvicorn[standard]>=0.30
+python-multipart>=0.0.9
+# CA 根证书：CentOS 7 系统证书过旧，缺 DashScope 证书链的根
+certifi>=2024.2.2

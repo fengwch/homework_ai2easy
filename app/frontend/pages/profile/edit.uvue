@@ -1,0 +1,344 @@
+<template>
+  <view class="container">
+    <scroll-view scroll-y class="scroll-view">
+      <view class="form">
+        <view class="avatar-section">
+          <image
+            v-if="form.avatarUrl"
+            :src="form.avatarUrl"
+            class="avatar"
+            mode="aspectFill"
+          />
+          <view v-else class="avatar-placeholder">
+            <text>{{ form.nickname?.[0] || 'U' }}</text>
+          </view>
+          <button class="change-avatar-btn" :disabled="uploading" @click="changeAvatar">{{ uploading ? '上传中...' : '更换头像' }}</button>
+        </view>
+
+        <view class="input-group">
+          <text class="label">昵称</text>
+          <input v-model="form.nickname" placeholder="请输入昵称" maxlength="20" class="input" />
+        </view>
+
+        <view class="input-group">
+          <text class="label">手机号</text>
+          <view class="phone-row">
+            <input v-model="form.phone" type="number" placeholder="请输入手机号" maxlength="11" class="input phone-input" />
+            <button
+              v-if="needPhoneCode"
+              class="code-btn"
+              :disabled="sendingCode || countdown > 0 || !isPhoneValid"
+              @click="sendPhoneCode"
+            >
+              {{ countdown > 0 ? `${countdown}s 后重试` : '获取验证码' }}
+            </button>
+          </view>
+          <input
+            v-if="needPhoneCode"
+            v-model="form.code"
+            type="number"
+            placeholder="请输入验证码"
+            maxlength="6"
+            class="input code-input"
+          />
+        </view>
+
+        <view class="input-group">
+          <text class="label">邮箱（可选）</text>
+          <input v-model="form.email" placeholder="请输入邮箱" class="input" />
+        </view>
+
+        <button class="save-btn" :disabled="saving" @click="handleSave">
+          {{ saving ? '保存中...' : '保存' }}
+        </button>
+      </view>
+    </scroll-view>
+  </view>
+</template>
+
+<script setup lang="uts">
+import { ref, computed, onMounted } from 'vue'
+import { useUserStore } from '@/stores/user'
+import { getUserProfile, uploadAvatar, updateUserProfile } from '@/api/user'
+import { sendSmsCode } from '@/api/auth'
+import { validateEmail } from '@/utils/validator'
+
+const userStore = useUserStore()
+
+const form = ref({
+  nickname: '',
+  phone: '',
+  email: '',
+  avatarUrl: '',
+  code: ''
+})
+
+const saving = ref(false)
+const uploading = ref(false)
+const sendingCode = ref(false)
+const countdown = ref(0)
+const originalPhone = ref('')
+
+const needPhoneCode = computed(() => form.value.phone && form.value.phone !== originalPhone.value)
+const isPhoneValid = computed(() => /^1\d{10}$/.test(form.value.phone || ''))
+
+onMounted(async () => {
+  const userInfo = userStore.userInfo.value
+  form.value = {
+    nickname: userInfo?.nickname || '',
+    phone: userInfo?.phone || '',
+    email: '',
+    avatarUrl: userInfo?.avatarUrl || userInfo?.avatar_url || '',
+    code: ''
+  }
+  try {
+    const profile = await getUserProfile()
+    form.value.nickname = profile.nickname || form.value.nickname
+    form.value.phone = profile.phone || form.value.phone
+    form.value.email = profile.email || ''
+    form.value.avatarUrl = profile.avatar_url || (profile as any).avatarUrl || form.value.avatarUrl
+  } catch (_) {
+    // 接口未实现时使用 userStore 数据
+  }
+  originalPhone.value = form.value.phone || ''
+})
+
+async function sendPhoneCode() {
+  if (!isPhoneValid.value) {
+    uni.showToast({ title: '请输入正确的手机号', icon: 'none' })
+    return
+  }
+  sendingCode.value = true
+  try {
+    await sendSmsCode(form.value.phone, 'bind_phone')
+    uni.showToast({ title: '验证码已发送', icon: 'success' })
+    countdown.value = 60
+    const timer = setInterval(() => {
+      countdown.value--
+      if (countdown.value <= 0) clearInterval(timer)
+    }, 1000)
+  } catch (e) {
+    uni.showToast({ title: e instanceof Error ? e.message : '发送失败', icon: 'none' })
+  } finally {
+    sendingCode.value = false
+  }
+}
+
+function changeAvatar() {
+  uni.chooseImage({
+    count: 1,
+    sizeType: ['compressed'],
+    sourceType: ['album', 'camera'],
+      success: async (res) => {
+      const tempPath = res.tempFilePaths[0]
+      if (!tempPath) return
+      uploading.value = true
+      try {
+        uni.showLoading({ title: '上传中...' })
+        const result = await uploadAvatar(tempPath)
+        const url = result.avatar_url || result.avatarUrl
+        if (url) {
+          form.value.avatarUrl = url
+          const updated = await updateUserProfile({ avatar_url: url })
+          userStore.applyProfileUpdate(updated)
+          uni.showToast({ title: '头像已更新', icon: 'success' })
+        } else {
+          uni.showToast({ title: '上传失败，请重试', icon: 'none' })
+        }
+      } catch (e) {
+        uni.showToast({
+          title: e instanceof Error ? e.message : '上传失败',
+          icon: 'none'
+        })
+      } finally {
+        uploading.value = false
+        uni.hideLoading()
+      }
+    }
+  })
+}
+
+async function handleSave() {
+  if (form.value.email && !validateEmail(form.value.email)) {
+    uni.showToast({
+      title: '请输入正确的邮箱地址',
+      icon: 'none'
+    })
+    return
+  }
+  if (needPhoneCode.value && !form.value.code) {
+    uni.showToast({
+      title: '修改手机号需输入验证码',
+      icon: 'none'
+    })
+    return
+  }
+  if (needPhoneCode.value && !isPhoneValid.value) {
+    uni.showToast({
+      title: '请输入正确的手机号',
+      icon: 'none'
+    })
+    return
+  }
+
+  saving.value = true
+  try {
+    const payload: Record<string, string | undefined> = {
+      nickname: form.value.nickname || undefined,
+      email: form.value.email || undefined,
+      avatar_url: form.value.avatarUrl || undefined
+    }
+    if (needPhoneCode.value && form.value.phone && form.value.code) {
+      payload.phone = form.value.phone
+      payload.code = form.value.code
+    }
+    const updated = await updateUserProfile(payload)
+    userStore.applyProfileUpdate(updated)
+
+    uni.showToast({
+      title: '保存成功',
+      icon: 'success'
+    })
+
+    setTimeout(() => {
+      uni.navigateBack()
+    }, 800)
+  } catch (err) {
+    console.error('保存失败:', err)
+    uni.showToast({
+      title: '保存失败，请重试',
+      icon: 'none'
+    })
+  } finally {
+    saving.value = false
+  }
+}
+</script>
+
+<style scoped lang="scss">
+.container {
+  min-height: 100vh;
+  background: #f5f5f5;
+}
+
+.scroll-view {
+  height: 100vh;
+}
+
+.form {
+  padding: 32rpx;
+}
+
+.avatar-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 60rpx;
+}
+
+.avatar {
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 80rpx;
+  margin-bottom: 24rpx;
+}
+
+.avatar-placeholder {
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 80rpx;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 60rpx;
+  font-weight: bold;
+  margin-bottom: 24rpx;
+}
+
+.change-avatar-btn {
+  padding: 16rpx 32rpx;
+  background: #f0f0f0;
+  color: #666;
+  border-radius: 8rpx;
+  font-size: 26rpx;
+  border: none;
+}
+
+.change-avatar-btn[disabled] {
+  background: #e5e5e5;
+  color: #999;
+}
+
+.input-group {
+  margin-bottom: 32rpx;
+}
+
+.label {
+  font-size: 28rpx;
+  color: #333;
+  display: block;
+  margin-bottom: 16rpx;
+}
+
+.input {
+  width: 100%;
+  height: 88rpx;
+  padding: 0 24rpx;
+  background: #fff;
+  border: 2rpx solid #e5e5e5;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+}
+
+.input.disabled {
+  background: #f5f5f5;
+  color: #999;
+}
+
+.phone-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.phone-input {
+  flex: 1;
+}
+
+.code-btn {
+  flex-shrink: 0;
+  padding: 0 24rpx;
+  height: 88rpx;
+  background: #667eea;
+  color: #fff;
+  font-size: 26rpx;
+  border-radius: 12rpx;
+  border: none;
+  line-height: 88rpx;
+}
+
+.code-btn[disabled] {
+  background: #ccc;
+}
+
+.code-input {
+  margin-top: 16rpx;
+}
+
+.save-btn {
+  width: 100%;
+  height: 88rpx;
+  background: #667eea;
+  color: #fff;
+  border-radius: 12rpx;
+  font-size: 32rpx;
+  margin-top: 40rpx;
+  border: none;
+}
+
+.save-btn[disabled] {
+  background: #ccc;
+}
+</style>

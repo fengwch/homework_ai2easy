@@ -1,0 +1,860 @@
+<template>
+  <view class="container">
+    <view class="header">
+      <view class="head-row">
+        <text class="page-sub">{{ pageSubtitle }}</text>
+        <view class="count-pill">
+          <text class="count-text">{{ loading ? '—' : total + ' 份' }}</text>
+        </view>
+      </view>
+
+      <!-- 两个筛选器等宽并排：外层 view 负责 flex 分配，picker 撑满 -->
+      <view class="filters">
+        <view class="filter-item">
+          <picker class="filter-picker" :value="statusIndex" :range="statusOptions" @change="onStatusChange">
+            <view class="filter-btn" :class="{ active: statusIndex > 0 }">
+              <view class="filter-text">
+                <text class="filter-label">状态</text>
+                <text class="filter-value">{{ statusOptions[statusIndex] }}</text>
+              </view>
+              <view class="chevron" />
+            </view>
+          </picker>
+        </view>
+        <view class="filter-item">
+          <picker class="filter-picker" :value="subjectIndex" :range="subjectOptions" @change="onSubjectChange">
+            <view class="filter-btn" :class="{ active: subjectIndex > 0 }">
+              <view class="filter-text">
+                <text class="filter-label">科目</text>
+                <text class="filter-value">{{ subjectOptions[subjectIndex] }}</text>
+              </view>
+              <view class="chevron" />
+            </view>
+          </picker>
+        </view>
+      </view>
+
+      <view v-if="hasActiveFilter && !loading && !loadError" class="active-bar">
+        <text class="active-text">筛选结果 {{ total }} 份</text>
+        <view class="reset-chip" @click="resetFilters">
+          <text class="reset-text">清除筛选</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 加载：骨架卡，避免整页文字闪烁 -->
+    <view v-if="loading" class="list">
+      <view v-for="i in 3" :key="'skel' + i" class="skeleton-card">
+        <view class="skeleton-head">
+          <view class="skeleton-chip" />
+          <view class="skeleton-chip small" />
+        </view>
+        <view class="skeleton-line w70" />
+        <view class="skeleton-line w40" />
+        <view class="skeleton-actions">
+          <view class="skeleton-btn" />
+          <view class="skeleton-btn" />
+        </view>
+      </view>
+    </view>
+
+    <view v-else-if="loadError" class="state">
+      <view class="error-icon">
+        <text class="error-mark">!</text>
+      </view>
+      <text class="state-title">加载失败</text>
+      <text class="state-hint">网络开小差了，请稍后重试</text>
+      <button class="state-btn" @click="loadList()">重新加载</button>
+    </view>
+
+    <view v-else-if="list.length === 0" class="state">
+      <view class="empty-icon">
+        <view class="empty-line" />
+        <view class="empty-line" />
+        <view class="empty-line short" />
+      </view>
+      <text class="state-title">{{ hasActiveFilter ? '没有符合条件的作业' : '还没有作业记录' }}</text>
+      <text class="state-hint">{{ hasActiveFilter ? '换个状态或科目再看看' : '拍下孩子的作业，开始 AI 辅导' }}</text>
+      <button v-if="hasActiveFilter" class="state-btn ghost" @click="resetFilters">清除筛选</button>
+      <button v-else class="state-btn" @click="goToScan">扫描第一份作业</button>
+    </view>
+
+    <view v-else class="list">
+      <view
+        v-for="item in list"
+        :key="item.id"
+        class="card"
+        hover-class="card-pressed"
+        @click="goToDetail(item.id)"
+      >
+        <view class="card-head">
+          <view class="subject-badge" :class="subjectClass(item.subject)">
+            <text class="subject-text">{{ item.subject || '作业' }}</text>
+          </view>
+          <view class="status-chip" :class="getDisplayStatusClass(item)">
+            <view class="status-dot" />
+            <text class="status-text">{{ getDisplayStatusText(item) }}</text>
+          </view>
+        </view>
+
+        <text v-if="getItemTitle(item)" class="card-title">{{ getItemTitle(item) }}</text>
+
+        <view class="card-meta">
+          <text class="meta-date">{{ formatDate(item.created_at || item.createdAt) }}</text>
+          <text v-if="hasScore(item)" class="score-text">{{ item.score }} 分</text>
+        </view>
+
+        <view class="card-actions">
+          <button class="action-btn primary" @click.stop="goToDetail(item.id)">{{ detailLabel(item) }}</button>
+          <button
+            v-if="canDo(item)"
+            class="action-btn"
+            @click.stop="goToAnswer(item.id)"
+          >
+            做题
+          </button>
+          <button
+            v-if="canReview(item)"
+            class="action-btn review"
+            @click.stop="goToReview(item.id)"
+          >
+            批改
+          </button>
+        </view>
+      </view>
+
+      <view class="list-footer">
+        <text v-if="loadingMore" class="footer-text">加载中…</text>
+        <text v-else-if="list.length >= total" class="footer-text">没有更多了</text>
+      </view>
+    </view>
+  </view>
+</template>
+
+<script setup lang="uts">
+import { ref, computed, onMounted } from 'vue'
+import { onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app'
+import { useUserStore } from '@/stores/user'
+import { ensureLoggedInThen } from '@/utils/auth'
+import { fetchAssignmentList } from '@/api/assignment'
+
+const userStore = useUserStore()
+const list = ref<any[]>([])
+const loading = ref(true)
+const loadingMore = ref(false)
+const refreshing = ref(false)
+const loadError = ref(false)
+const total = ref(0)
+const page = ref(1)
+const pageSize = 20
+const statusIndex = ref(0)
+const subjectIndex = ref(0)
+
+// 防止快速切换筛选时旧请求覆盖新结果
+let requestSeq = 0
+
+const statusOptions = ['全部', '待处理', '处理中', '未作答', '已作答', '失败']
+const statusMap: Record<string, string> = {
+  '全部': '',
+  '待处理': 'pending',
+  '处理中': 'processing',
+  '未作答': 'completed',
+  '已作答': 'completed',
+  '失败': 'failed'
+}
+const statusFilterHasAnswers: Record<string, boolean | undefined> = {
+  '全部': undefined,
+  '待处理': undefined,
+  '处理中': undefined,
+  '未作答': false,
+  '已作答': true,
+  '失败': undefined
+}
+const subjectOptions = ['全部', '数学', '语文', '英语', '科学', '其他']
+
+const hasActiveFilter = computed(() => statusIndex.value > 0 || subjectIndex.value > 0)
+const currentChildName = computed(() => {
+  const current = userStore.children.value.find(
+    (c) => String(c.id) === String(userStore.currentChildId.value)
+  )
+  return current?.name || ''
+})
+const pageSubtitle = computed(() => currentChildName.value
+  ? currentChildName.value + '的作业 · 按时间倒序'
+  : '按时间倒序排列')
+
+onMounted(() => {
+  ensureLoggedInThen(() => {
+    loadList()
+  })
+})
+
+onPullDownRefresh(() => {
+  if (loading.value || loadingMore.value || refreshing.value) {
+    uni.stopPullDownRefresh()
+    return
+  }
+  // 静默刷新：保留现有列表，由原生下拉指示器承担加载反馈，避免骨架屏闪烁
+  refreshing.value = true
+  loadList(true, true).finally(() => {
+    refreshing.value = false
+    uni.stopPullDownRefresh()
+  })
+})
+
+onReachBottom(() => {
+  loadMore()
+})
+
+function loadList(reset = true, silent = false) {
+  if (reset) {
+    page.value = 1
+    if (!silent) {
+      list.value = []
+      loadError.value = false
+      loading.value = true
+    }
+  } else {
+    loadingMore.value = true
+  }
+
+  const seq = ++requestSeq
+  const params: any = {
+    page: page.value,
+    page_size: pageSize
+  }
+  const status = statusMap[statusOptions[statusIndex.value]]
+  if (status) params.status = status
+  const hasAnswers = statusFilterHasAnswers[statusOptions[statusIndex.value]]
+  if (hasAnswers !== undefined && status === 'completed') params.has_answers = hasAnswers
+  const subject = subjectIndex.value > 0 ? subjectOptions[subjectIndex.value] : undefined
+  if (subject) params.subject = subject
+  if (userStore.currentChildId.value) params.child_id = userStore.currentChildId.value
+
+  return fetchAssignmentList(params)
+    .then((data: any) => {
+      if (seq !== requestSeq) return
+      const items = data.list || []
+      total.value = data.total ?? 0
+      if (reset) {
+        loadError.value = false
+        list.value = items
+      } else {
+        list.value = list.value.concat(items)
+      }
+    })
+    .catch((err) => {
+      if (seq !== requestSeq) return
+      console.error('加载作业列表失败:', err)
+      if (reset) {
+        if (silent) {
+          uni.showToast({ title: '刷新失败，请稍后重试', icon: 'none' })
+        } else {
+          loadError.value = true
+          list.value = []
+        }
+      } else {
+        page.value = Math.max(1, page.value - 1)
+        uni.showToast({ title: '加载失败，请重试', icon: 'none' })
+      }
+    })
+    .finally(() => {
+      if (seq !== requestSeq) return
+      loading.value = false
+      loadingMore.value = false
+    })
+}
+
+function onStatusChange(e: any) {
+  statusIndex.value = e.detail.value
+  loadList()
+}
+
+function onSubjectChange(e: any) {
+  subjectIndex.value = e.detail.value
+  loadList()
+}
+
+function resetFilters() {
+  if (!hasActiveFilter.value) return
+  statusIndex.value = 0
+  subjectIndex.value = 0
+  loadList()
+}
+
+function loadMore() {
+  if (loading.value || loadingMore.value || refreshing.value) return
+  if (list.value.length >= total.value) return
+  page.value++
+  loadList(false)
+}
+
+function resolveHasAnswers(item: any): boolean {
+  if (item.has_answers === true || item.hasAnswers === true) return true
+  if (item.has_answers === false || item.hasAnswers === false) return false
+  if (item.answered === true) return true
+  return false
+}
+
+function getDisplayStatusText(item: any): string {
+  const s = item.status
+  if (s === 'pending') return '待处理'
+  if (s === 'processing') return '处理中'
+  if (s === 'failed') return '失败'
+  if (s === 'completed') {
+    return resolveHasAnswers(item) ? '已作答' : '未作答'
+  }
+  return s || ''
+}
+
+function getDisplayStatusClass(item: any): string {
+  const s = item.status
+  if (s === 'completed') {
+    return resolveHasAnswers(item) ? 'answered' : 'unanswered'
+  }
+  if (s === 'pending' || s === 'processing' || s === 'failed') return s
+  return 'unknown'
+}
+
+function subjectClass(subject: string): string {
+  if (subject === '数学') return 'math'
+  if (subject === '语文') return 'chinese'
+  if (subject === '英语') return 'english'
+  if (subject === '科学') return 'science'
+  return 'default'
+}
+
+function getItemTitle(item: any): string {
+  if (item.title) return item.title
+  if (item.name) return item.name
+  return ''
+}
+
+function hasScore(item: any): boolean {
+  return item.score !== null && item.score !== undefined && item.score !== ''
+}
+
+function detailLabel(item: any): string {
+  return item.status === 'completed' ? '查看辅导' : '查看详情'
+}
+
+function formatDate(str: string): string {
+  if (!str) return ''
+  const normalized = str.indexOf('T') >= 0 ? str : str.replace(' ', 'T')
+  const d = new Date(normalized)
+  if (isNaN(d.getTime())) return str
+
+  const now = new Date()
+  const hours = String(d.getHours()).padStart(2, '0')
+  const minutes = String(d.getMinutes()).padStart(2, '0')
+  const time = hours + ':' + minutes
+
+  const sameDay = d.getFullYear() === now.getFullYear()
+    && d.getMonth() === now.getMonth()
+    && d.getDate() === now.getDate()
+  if (sameDay) return '今天 ' + time
+
+  const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1)
+  const isYesterday = d.getFullYear() === yesterday.getFullYear()
+    && d.getMonth() === yesterday.getMonth()
+    && d.getDate() === yesterday.getDate()
+  if (isYesterday) return '昨天 ' + time
+
+  const month = d.getMonth() + 1
+  const day = d.getDate()
+  if (d.getFullYear() === now.getFullYear()) {
+    return month + '月' + day + '日 ' + time
+  }
+  return d.getFullYear() + '年' + month + '月' + day + '日'
+}
+
+function canDo(item: any) {
+  return item.status === 'completed'
+}
+
+function canReview(item: any) {
+  if (item.status !== 'completed') return false
+  return resolveHasAnswers(item)
+}
+
+function goToDetail(id: number) {
+  uni.navigateTo({ url: `/pages/assignment/detail?id=${id}` })
+}
+
+function goToAnswer(id: number) {
+  uni.navigateTo({ url: `/pages/learning/answer?assignmentId=${id}` })
+}
+
+function goToReview(id: number) {
+  uni.navigateTo({ url: `/pages/assignment/review?assignmentId=${id}` })
+}
+
+function goToScan() {
+  if (!userStore.currentChildId.value) {
+    uni.showToast({ title: '请先在首页选择孩子', icon: 'none' })
+    return
+  }
+  uni.navigateTo({ url: '/pages/assignment/scan' })
+}
+
+</script>
+
+<style scoped lang="scss">
+.container {
+  min-height: 100vh;
+  background: #f5f5f5;
+}
+
+/* ---------- 顶部标题 + 筛选 ---------- */
+
+.header {
+  padding: 28rpx 32rpx 24rpx;
+  background: #fff;
+  border-bottom: 2rpx solid #eef0f4;
+}
+
+.head-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24rpx;
+}
+
+.page-sub {
+  flex: 1;
+  min-width: 0;
+  margin-right: 20rpx;
+  font-size: 28rpx;
+  font-weight: 500;
+  line-height: 1.4;
+  color: #4b5563;
+}
+
+.count-pill {
+  padding: 10rpx 20rpx;
+  background: #eef1ff;
+  border-radius: 999rpx;
+}
+
+.count-text {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #4c51bf;
+}
+
+.filters {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 20rpx;
+}
+
+/* 外层 view 承担 flex 份额，picker 作为 flex 子项撑满，保证两列严格并排 */
+.filter-item {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.filter-picker {
+  width: 100%;
+}
+
+.filter-btn {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 96rpx;
+  padding: 12rpx 24rpx;
+  background: #f7f8ff;
+  border: 2rpx solid #e4e8ff;
+  border-radius: 14rpx;
+}
+
+.filter-btn.active {
+  background: #eef1ff;
+  border-color: #5a67d8;
+}
+
+.filter-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2rpx;
+  flex: 1;
+  min-width: 0;
+}
+
+.filter-label {
+  font-size: 26rpx;
+  color: #5b6270;
+}
+
+.filter-value {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #2f3440;
+}
+
+.filter-btn.active .filter-value {
+  color: #4c51bf;
+}
+
+.chevron {
+  width: 14rpx;
+  height: 14rpx;
+  margin-top: -8rpx;
+  margin-right: 4rpx;
+  border-right: 3rpx solid #8a90a6;
+  border-bottom: 3rpx solid #8a90a6;
+  transform: rotate(45deg);
+}
+
+.active-bar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 20rpx;
+}
+
+.active-text {
+  font-size: 26rpx;
+  color: #5a67d8;
+}
+
+.reset-chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 88rpx;
+  padding: 0 28rpx;
+  background: #eef1ff;
+  border-radius: 999rpx;
+}
+
+.reset-text {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #4c51bf;
+}
+
+/* ---------- 列表与卡片 ---------- */
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+  padding: 24rpx 32rpx 40rpx;
+}
+
+.card {
+  padding: 28rpx;
+  background: #fff;
+  border: 2rpx solid #eceef4;
+  border-radius: 18rpx;
+  box-shadow: 0 6rpx 20rpx rgba(31, 41, 55, 0.04);
+}
+
+.card-pressed {
+  background: #fbfbff;
+}
+
+.card-head {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18rpx;
+}
+
+.subject-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8rpx 18rpx;
+  border-radius: 10rpx;
+}
+
+.subject-text {
+  font-size: 26rpx;
+  font-weight: 600;
+}
+
+.subject-badge.math { background: #eef2ff; }
+.subject-badge.math .subject-text { color: #4f46e5; }
+.subject-badge.chinese { background: #fff1f2; }
+.subject-badge.chinese .subject-text { color: #be123c; }
+.subject-badge.english { background: #ecfeff; }
+.subject-badge.english .subject-text { color: #0e7490; }
+.subject-badge.science { background: #ecfdf5; }
+.subject-badge.science .subject-text { color: #047857; }
+.subject-badge.default { background: #f3f4f6; }
+.subject-badge.default .subject-text { color: #4b5563; }
+
+.status-chip {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8rpx;
+  padding: 6rpx 16rpx;
+  border-radius: 999rpx;
+}
+
+.status-dot {
+  width: 10rpx;
+  height: 10rpx;
+  border-radius: 5rpx;
+}
+
+.status-text {
+  font-size: 24rpx;
+  font-weight: 600;
+}
+
+.status-chip.pending { background: #fff4e5; }
+.status-chip.pending .status-dot,
+.status-chip.pending .status-text { color: #9a4a00; }
+.status-chip.pending .status-dot { background: #c2620a; }
+
+.status-chip.processing { background: #eaf2ff; }
+.status-chip.processing .status-dot,
+.status-chip.processing .status-text { color: #1d4ed8; }
+.status-chip.processing .status-dot { background: #2563eb; }
+
+.status-chip.unanswered { background: #fff8e1; }
+.status-chip.unanswered .status-dot,
+.status-chip.unanswered .status-text { color: #8a6100; }
+.status-chip.unanswered .status-dot { background: #b7791f; }
+
+.status-chip.answered { background: #e9f9f0; }
+.status-chip.answered .status-dot,
+.status-chip.answered .status-text { color: #0f6b4f; }
+.status-chip.answered .status-dot { background: #059669; }
+
+.status-chip.failed { background: #fdecec; }
+.status-chip.failed .status-dot,
+.status-chip.failed .status-text { color: #b42318; }
+.status-chip.failed .status-dot { background: #dc2626; }
+
+.status-chip.unknown { background: #f3f4f6; }
+.status-chip.unknown .status-dot,
+.status-chip.unknown .status-text { color: #4b5563; }
+.status-chip.unknown .status-dot { background: #6b7280; }
+
+.card-title {
+  display: block;
+  margin-bottom: 12rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+  line-height: 1.4;
+  color: #2f3440;
+}
+
+.card-meta {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.meta-date {
+  font-size: 26rpx;
+  line-height: 1.5;
+  color: #6b7280;
+}
+
+.score-text {
+  padding: 6rpx 14rpx;
+  background: #e9f7f0;
+  border-radius: 8rpx;
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #0f6b4f;
+}
+
+.card-actions {
+  display: flex;
+  flex-direction: row;
+  gap: 14rpx;
+  margin-top: 24rpx;
+  padding-top: 24rpx;
+  border-top: 2rpx solid #f2f4f8;
+}
+
+.action-btn {
+  flex: 1;
+  height: 88rpx;
+  line-height: 88rpx;
+  padding: 0;
+  background: #f1f3f7;
+  color: #4b5563;
+  border: none;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+}
+
+.action-btn.primary {
+  background: #5a67d8;
+  color: #fff;
+  font-weight: 600;
+}
+
+.action-btn.review {
+  background: #e9f7f0;
+  color: #0f6b4f;
+  font-weight: 600;
+}
+
+/* ---------- 加载 / 空 / 错误 ---------- */
+
+.skeleton-card {
+  padding: 28rpx;
+  background: #fff;
+  border: 2rpx solid #eef0f4;
+  border-radius: 18rpx;
+}
+
+.skeleton-head {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.skeleton-chip {
+  width: 104rpx;
+  height: 36rpx;
+  background: #eef0f5;
+  border-radius: 10rpx;
+}
+
+.skeleton-chip.small {
+  width: 80rpx;
+  border-radius: 18rpx;
+}
+
+.skeleton-line {
+  height: 24rpx;
+  margin-top: 20rpx;
+  background: #eef0f5;
+  border-radius: 8rpx;
+}
+
+.skeleton-line.w70 {
+  width: 70%;
+}
+
+.skeleton-line.w40 {
+  width: 40%;
+}
+
+.skeleton-actions {
+  display: flex;
+  flex-direction: row;
+  gap: 14rpx;
+  margin-top: 28rpx;
+}
+
+.skeleton-btn {
+  flex: 1;
+  height: 72rpx;
+  background: #f1f2f6;
+  border-radius: 12rpx;
+}
+
+.state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 120rpx 48rpx;
+}
+
+.empty-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 14rpx;
+  width: 132rpx;
+  height: 156rpx;
+  padding: 32rpx 24rpx;
+  background: #f7f8ff;
+  border: 4rpx solid #c9d0ff;
+  border-radius: 20rpx;
+}
+
+.empty-line {
+  height: 6rpx;
+  background: #c9d0ff;
+  border-radius: 3rpx;
+}
+
+.empty-line.short {
+  width: 60%;
+}
+
+.error-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 120rpx;
+  height: 120rpx;
+  background: #fdecec;
+  border-radius: 60rpx;
+}
+
+.error-mark {
+  font-size: 56rpx;
+  font-weight: bold;
+  color: #b42318;
+}
+
+.state-title {
+  margin-top: 32rpx;
+  font-size: 34rpx;
+  font-weight: 600;
+  color: #2f3440;
+}
+
+.state-hint {
+  margin-top: 12rpx;
+  font-size: 26rpx;
+  line-height: 1.6;
+  color: #5b6270;
+  text-align: center;
+}
+
+.state-btn {
+  min-width: 280rpx;
+  height: 88rpx;
+  line-height: 88rpx;
+  margin-top: 40rpx;
+  padding: 0 40rpx;
+  background: #5a67d8;
+  color: #fff;
+  border: none;
+  border-radius: 14rpx;
+  font-size: 28rpx;
+}
+
+.state-btn.ghost {
+  background: #eef1ff;
+  color: #4c51bf;
+}
+
+.list-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16rpx 0 24rpx;
+}
+
+.footer-text {
+  font-size: 24rpx;
+  color: #5b6270;
+}
+</style>

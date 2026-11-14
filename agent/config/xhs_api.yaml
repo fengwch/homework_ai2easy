@@ -1,0 +1,32 @@
+# 小红书 Open API 行为配置（可选 / 遗留；请以开放平台当前文档为准修改）
+#
+# 自动发帖推荐：xiaohongshu-mcp（见 marketing/XHS_MCP_PUBLISH.md），无需本文件与开放平台发帖权限。
+# 仅在你仍要直连 common_controller 时配置；未配置 publish_note.method 时，--execute 不会成功发帖。
+
+# 网关（与 OAuth 一致时常用此地址；测试环境可能是 ark.sit.xiaohongshu.com）
+base_url: "https://ark.xiaohongshu.com"
+api_path: "/ark/open_api/v3/common_controller"
+api_version: "2.0"
+
+# 发布笔记：在控制台拿到正式 method 与参数后填写。
+# 未配置 method 时，真实发布会失败；默认不加 --execute 即只做文案与素材流水线。
+publish_note:
+  enabled: false
+  # method: "example.note.publish"   # 替换为开放平台提供的真实 method
+  # 除公共参数外，业务参数原样合并进 POST body（accessToken 由客户端注入）
+  # extra_params:
+  #   title: ""
+  #   content: ""
+
+# 图片上传（若文档提供单独 method）
+upload_image:
+  enabled: false
+  # method: "example.material.upload"
+  # extra_params: {}
+
+# 多账号：每项可覆盖 token（也可用环境变量 XHS_ACCESS_TOKEN 等单一账号）
+accounts:
+  - id: "default"
+    label: "主账号"
+    # env_suffix: "_ACC1"   # 则读取 XHS_APP_ID_ACC1、XHS_ACCESS_TOKEN_ACC1 ...
+    token_cache_env: "XHS_TOKEN_CACHE_PATH"

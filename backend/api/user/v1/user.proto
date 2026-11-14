@@ -1,0 +1,178 @@
+syntax = "proto3";
+
+package api.user.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+
+option go_package = "homework_ai2easy/backend/api/user/v1;v1";
+
+// 用户服务
+service UserService {
+  // 获取用户信息
+  rpc GetProfile (google.protobuf.Empty) returns (GetProfileReply) {
+    option (google.api.http) = {
+      get: "/api/v1/user/profile"
+    };
+  }
+
+  // 更新用户信息
+  rpc UpdateProfile (UpdateProfileRequest) returns (GetProfileReply) {
+    option (google.api.http) = {
+      put: "/api/v1/user/profile"
+      body: "*"
+    };
+  }
+
+  // 上传头像
+  rpc UploadAvatar (UploadAvatarRequest) returns (UploadAvatarReply) {
+    option (google.api.http) = {
+      post: "/api/v1/user/avatar"
+      body: "*"
+    };
+  }
+
+  // 修改密码
+  rpc ChangePassword (ChangePasswordRequest) returns (ChangePasswordReply) {
+    option (google.api.http) = {
+      post: "/api/v1/user/change-password"
+      body: "*"
+    };
+  }
+
+  // 绑定手机号
+  rpc BindPhone (BindPhoneRequest) returns (BindPhoneReply) {
+    option (google.api.http) = {
+      post: "/api/v1/user/bind-phone"
+      body: "*"
+    };
+  }
+
+  // 获取订阅信息
+  rpc GetSubscription (google.protobuf.Empty) returns (GetSubscriptionReply) {
+    option (google.api.http) = {
+      get: "/api/v1/user/subscription"
+    };
+  }
+
+  // 订阅管理
+  rpc UpdateSubscription (UpdateSubscriptionRequest) returns (UpdateSubscriptionReply) {
+    option (google.api.http) = {
+      post: "/api/v1/user/subscription"
+      body: "*"
+    };
+  }
+}
+
+// 获取用户信息响应
+message GetProfileReply {
+  int32 code = 1;
+  string message = 2;
+  ProfileData data = 3;
+}
+
+message ProfileData {
+  int64 id = 1;
+  string phone = 2;
+  string nickname = 3;
+  string avatar_url = 4;
+  string email = 5;
+  int32 gender = 6;  // 0:未知 1:男 2:女
+  string birthday = 7;
+  string created_at = 8;
+  string updated_at = 9;
+}
+
+// 更新用户信息请求
+message UpdateProfileRequest {
+  string nickname = 1;
+  string avatar_url = 2;
+  string email = 3;
+  int32 gender = 4;
+  string birthday = 5;
+  string phone = 6;   // 新手机号，修改时需同时传 code
+  string code = 7;    // 短信验证码，与 phone 同时传入时用于更换手机号
+}
+
+// 上传头像请求
+message UploadAvatarRequest {
+  bytes file = 1;  // 文件内容（multipart/form-data）
+}
+
+// 上传头像响应
+message UploadAvatarReply {
+  int32 code = 1;
+  string message = 2;
+  UploadAvatarData data = 3;
+}
+
+message UploadAvatarData {
+  string avatar_url = 1;
+}
+
+// 修改密码请求
+message ChangePasswordRequest {
+  string old_password = 1;
+  string new_password = 2;
+}
+
+// 修改密码响应
+message ChangePasswordReply {
+  int32 code = 1;
+  string message = 2;
+}
+
+// 绑定手机号请求
+message BindPhoneRequest {
+  string phone = 1;
+  string code = 2;
+}
+
+// 绑定手机号响应
+message BindPhoneReply {
+  int32 code = 1;
+  string message = 2;
+  BindPhoneData data = 3;
+}
+
+message BindPhoneData {
+  string phone = 1;
+}
+
+// 获取订阅信息响应
+message GetSubscriptionReply {
+  int32 code = 1;
+  string message = 2;
+  SubscriptionData data = 3;
+}
+
+message SubscriptionData {
+  string plan = 1;  // free/basic/premium
+  string status = 2;  // active/expired/cancelled
+  string expires_at = 3;
+  SubscriptionFeatures features = 4;
+}
+
+message SubscriptionFeatures {
+  bool unlimited_children = 1;
+  bool unlimited_assignments = 2;
+  bool advanced_reports = 3;
+}
+
+// 更新订阅请求
+message UpdateSubscriptionRequest {
+  string plan = 1;  // basic/premium
+  string payment_method = 2;  // wechat/alipay
+}
+
+// 更新订阅响应
+message UpdateSubscriptionReply {
+  int32 code = 1;
+  string message = 2;
+  UpdateSubscriptionData data = 3;
+}
+
+message UpdateSubscriptionData {
+  string order_id = 1;
+  string payment_url = 2;
+}

@@ -1,0 +1,89 @@
+{
+  "date": "2026-11-05",
+  "student_name": "冯昱乔",
+  "slogan": "",
+  "items": [
+    {
+      "seq": 1,
+      "subject": "语文",
+      "task": "拼读p51-52音节，并口头组一个词",
+      "quantity": "",
+      "requirements": [],
+      "requirements_all": [],
+      "priority": "normal",
+      "priority_signals": [],
+      "estimated_minutes": null,
+      "type": "oral",
+      "provenance": {
+        "task": "verbatim",
+        "quantity": "verbatim",
+        "subject": "verbatim"
+      }
+    },
+    {
+      "seq": 2,
+      "subject": "数学",
+      "task": "读P51（说一说每幅图表示的意思）",
+      "quantity": "",
+      "requirements": [],
+      "requirements_all": [],
+      "priority": "normal",
+      "priority_signals": [],
+      "estimated_minutes": null,
+      "type": "reading",
+      "provenance": {
+        "task": "verbatim",
+        "quantity": "verbatim",
+        "subject": "verbatim"
+      }
+    }
+  ],
+  "extras": [],
+  "pending": [],
+  "source_text": "11月5日\n语文 拼读p51-52音节，并口头组一个词\n数学 读P51（说一说每幅图表示的意思）\n一5",
+  "source_kind": "ocr",
+  "report": {
+    "traced": [
+      {
+        "where": "item1.task",
+        "value": "拼读p51-52音节，并口头组一个词",
+        "level": "verbatim"
+      },
+      {
+        "where": "item1.quantity",
+        "value": "",
+        "level": "verbatim"
+      },
+      {
+        "where": "item2.task",
+        "value": "读P51（说一说每幅图表示的意思）",
+        "level": "verbatim"
+      },
+      {
+        "where": "item2.quantity",
+        "value": "",
+        "level": "verbatim"
+      }
+    ],
+    "advisories": [],
+    "uncovered": [
+      "11月5日",
+      "一5"
+    ],
+    "priority_overrides": [],
+    "notes": [
+      "家长确认不纳入：一5",
+      "家长确认不纳入：11月5日",
+      "家长确认不纳入：（本图来自 OCR 识别，请家长核对每一项）"
+    ],
+    "stats": {
+      "items_safe": 2,
+      "items_dropped": 0,
+      "unsourced": 0,
+      "advisories": 0,
+      "auto_dropped_boilerplate": 0,
+      "uncovered": 2
+    }
+  },
+  "unresolved": []
+}

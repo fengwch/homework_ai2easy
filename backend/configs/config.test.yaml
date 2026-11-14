@@ -1,0 +1,75 @@
+# 测试环境配置：启用 CORS，便于前端直连后端接口
+# 使用方式: -conf configs/config.test.yaml
+
+server:
+  http:
+    addr: 0.0.0.0:8000
+    timeout: 1s
+  grpc:
+    addr: 0.0.0.0:9002
+    timeout: 1s
+  # 对外 API 根地址，用于生成 PDF 下载等链接
+  api_base_url: "http://localhost:8000"
+  cors:
+    enabled: true
+    # 前端 Vite 开发服 localhost:5173；带 credentials 时须具体源，不可 *
+    allow_origins:
+      - "http://localhost:5173"
+      - "http://127.0.0.1:5173"
+    allow_credentials: true
+    allow_methods:
+      - GET
+      - POST
+      - PUT
+      - PATCH
+      - DELETE
+      - OPTIONS
+    allow_headers:
+      - Content-Type
+      - Authorization
+      - X-Requested-With
+      - Accept
+      - Origin
+      - X-Device-Id
+      - X-Platform
+
+logger:
+  level: debug
+  format: json
+  output: both
+  file_path: logs/app.log
+  max_size: 100
+  max_backups: 5
+  max_age: 30
+  compress: true
+  enable_caller: true
+  enable_stacktrace: false
+
+data:
+  database:
+    driver: mysql
+    source: root:root123456@tcp(127.0.0.1:3306)/smartstudy?charset=utf8mb4&parseTime=True&loc=Local
+  redis:
+    addr: 127.0.0.1:6379
+    password: ""
+    db: 0
+
+jwt:
+  secret: your-secret-key-change-in-production
+  expires_in: 2592000s
+
+# AI Agent 服务（OCR、内容生成等）
+ai_agent:
+  url: "http://0.0.0.0:8001"
+  timeout: 600s  # 请求超时，默认 10 分钟，避免长任务超时
+
+# 微信小程序登录（静默登录用 code 换 openid）
+wechat:
+  app_id: "wx134d3e0f3c33eb77"
+  app_secret: "71b5f434e40b3fe0691ab32a62049647"  # 仅存后端，勿提交仓库
+  timeout: 60s  # code2Session 超时，网络慢或跨境可调大
+
+sms:
+  expires_in: 300s
+  provider: mock
+  test_code: "123456"  # 测试环境万能验证码，登录/注册/重置密码填此码即跳过校验

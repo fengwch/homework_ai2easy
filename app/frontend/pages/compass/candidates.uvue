@@ -1,0 +1,225 @@
+<template>
+  <view class="page">
+    <text class="title">选一个喜欢的风格</text>
+    <text class="subtitle">共 {{ skins.length }} 种主题，点开可选{{ favoriteText }}</text>
+
+    <view class="grid">
+      <view v-for="skin in skins" :key="skin" class="cell" @click="onSelect(skin)">
+        <image
+          v-if="renders[skin]"
+          :src="imageUrl(renders[skin].url)"
+          class="thumb"
+          mode="aspectFit"
+        />
+        <view v-else class="thumb placeholder">
+          <text class="placeholder-text">生成中...</text>
+        </view>
+        <text class="skin-name">{{ skinName(skin) }}</text>
+      </view>
+    </view>
+
+    <text v-if="errorText" class="error">{{ errorText }}</text>
+
+    <view class="footer">
+      <button v-if="shown < skins.length" class="btn primary" :disabled="working" @click="generateMore">
+        {{ working ? '生成中...' : '生成更多' }}
+      </button>
+      <button v-else class="btn ghost" :disabled="working" @click="renderAll">换一批</button>
+    </view>
+  </view>
+</template>
+
+<script setup lang="uts">
+import { ref } from 'vue'
+import { COMPASS_SKINS, COMPASS_SKIN_NAMES, compassImageUrl, compassRender, compassFetchThemes, compassSuggestThemes } from '@/api/compass'
+import type { CompassRender } from '@/api/compass'
+import { useCompassStore } from '@/stores/compass'
+import { useUserStore } from '@/stores/user'
+
+// 首屏先出 4 张，其余点「生成更多」再出：一次渲染 10 张要等太久
+const FIRST_BATCH = 4
+
+const store = useCompassStore()
+const userStore = useUserStore()
+const skins = ref<string[]>(COMPASS_SKINS)
+const renders = ref<Record<string, CompassRender>>({})
+const working = ref(false)
+const errorText = ref('')
+const favoriteText = ref('')
+const themeCn: Record<string, string> = {}
+const shown = ref(FIRST_BATCH)   // 已发起渲染的张数
+
+async function buildThemeList() {
+  try {
+    const themes = await compassFetchThemes()
+    themes.forEach(t => { themeCn[t.key] = t.cn })
+    // 按孩子兴趣排序
+    const child = userStore.children.value.find(c => String(c.id) === String(store.state.childId))
+    const tags = [...(child?.interests || []), ...(child?.custom_interests || [])] as string[]
+    if (tags.length > 0) {
+      try {
+        const ordered = await compassSuggestThemes(tags)
+        if (ordered.length > 0) skins.value = ordered
+        favoriteText.value = '，已按兴趣为你推荐'
+      } catch (e) { /* 排序失败用默认顺序 */ }
+    }
+  } catch (e) {
+    // 服务端未就绪：退回本地兜底主题名
+  }
+}
+
+onLoad(async () => {
+  await buildThemeList()
+  shown.value = Math.min(FIRST_BATCH, skins.value.length)
+  renderRange(0, shown.value)
+})
+
+function skinName(skin: string): string {
+  return themeCn[skin] || COMPASS_SKIN_NAMES[COMPASS_SKINS.indexOf(skin)] || skin
+}
+
+function imageUrl(url: string): string {
+  return compassImageUrl(url)
+}
+
+// 渲染 [from, to) 区间的主题，已有的跳过
+async function renderRange(from: number, to: number) {
+  const hw = store.state.hw
+  if (!hw) {
+    uni.redirectTo({ url: '/pages/compass/input' })
+    return
+  }
+  working.value = true
+  errorText.value = ''
+  try {
+    // 逐个渲染：单张就是 2480×3508 的图，并发容易把服务端的 Pillow 打满
+    for (let i = from; i < to; i++) {
+      const skin = skins.value[i]
+      if (renders.value[skin]) continue
+      // 必须就地赋值：H5 端整体重赋新对象不一定触发视图刷新，会出现「待生成」占位不消失
+      renders.value[skin] = await compassRender(hw, 'quest-map', skin)
+    }
+  } catch (err: any) {
+    errorText.value = err?.message || '生成失败'
+  } finally {
+    working.value = false
+  }
+}
+
+function generateMore() {
+  const from = shown.value
+  const to = Math.min(from + FIRST_BATCH, skins.value.length)
+  shown.value = to
+  renderRange(from, to)
+}
+
+async function renderAll() {
+  // 重排顺序：先清空，从首批数量开始，再点「生成更多」续上
+  Object.keys(renders.value).forEach((k) => { delete renders.value[k] })
+  shown.value = Math.min(FIRST_BATCH, skins.value.length)
+  await renderRange(0, shown.value)
+}
+
+function onSelect(skin: string) {
+  const r = renders.value[skin]
+  if (!r) return
+  store.setSkin(skin)
+  store.setRender(r)
+  uni.navigateTo({ url: '/pages/compass/edit' })
+}
+</script>
+
+<style scoped lang="scss">
+.page {
+  min-height: 100vh;
+  padding: 32rpx;
+  padding-bottom: 200rpx;
+  background: #f5f5f5;
+}
+
+.title {
+  display: block;
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #333;
+}
+
+.subtitle {
+  display: block;
+  margin: 8rpx 0 24rpx;
+  font-size: 26rpx;
+  color: #666;
+}
+
+.grid {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 24rpx;
+}
+
+.cell {
+  width: 310rpx;
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 16rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.thumb {
+  width: 278rpx;
+  height: 394rpx;
+  background: #f5f5f5;
+  border-radius: 8rpx;
+}
+
+.placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.placeholder-text {
+  font-size: 24rpx;
+  color: #999;
+}
+
+.skin-name {
+  font-size: 26rpx;
+  color: #333;
+}
+
+.error {
+  display: block;
+  margin-top: 24rpx;
+  font-size: 26rpx;
+  color: #c0392b;
+}
+
+.footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 24rpx 32rpx calc(24rpx + env(safe-area-inset-bottom));
+  background: #fff;
+  border-top: 2rpx solid #eee;
+}
+
+.btn {
+  width: 100%;
+  height: 88rpx;
+  line-height: 88rpx;
+  border-radius: 12rpx;
+  font-size: 30rpx;
+  border: none;
+}
+
+.btn.ghost {
+  color: #667eea;
+  background: #f4f5ff;
+}
+</style>

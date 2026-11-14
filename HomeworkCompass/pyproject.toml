@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "homework-compass"
+version = "0.1.0"
+description = "每日作业目标生成器：解析 + 机械校验 + A4 排版"
+requires-python = ">=3.13"
+dependencies = ["Pillow>=12.0"]
+
+[project.optional-dependencies]
+# HTTP 服务形态（api.py）需要的依赖；只用 CLI 时不必装
+api = ["fastapi>=0.115", "uvicorn[standard]>=0.30", "python-multipart>=0.0.9"]
+dev = ["pytest>=9.0"]
+
+[project.scripts]
+hw = "homework_compass.cli.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+# 主题底图不进 wheel/py 包：2480x3508 的 PNG 属于部署资产，随 tar 包一起发，
+# 由 api.py 的 HW_BASE_DIR 或 CLI 的 base_dir 指向。
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["network: 需要真实 API，默认不跑"]
+addopts = "-m 'not network'"
+# 未 pip install 时也能直接跑测试：src 布局靠这一行进 sys.path
+pythonpath = ["src"]

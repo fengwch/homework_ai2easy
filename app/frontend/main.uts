@@ -1,0 +1,28 @@
+// 仅测试 console.log 时机问题
+import './test-main-console.uts'
+import App from './App.uvue'
+
+import { createSSRApp } from 'vue'
+
+export function createApp() {
+  const app = createSSRApp(App)
+  // uni-stat 已移除：未部署 uni-stat-receiver 云函数时会 404，若需统计请部署后恢复
+  // #ifdef MP-WEIXIN
+  app.mixin({
+    onShow() {
+      uni.hideHomeButton()
+    }
+  })
+  // #endif
+  // app.mixin({
+  //   onReady() {
+  //     setTimeout(() => {
+  //       console.log((this as BasePage).$nativePage!.getDomJson())
+  //     }, 100)
+  //   }
+  // })
+  return {
+    app
+  }
+}
+// 此注释必须放在此文件的最后一行，用于测试issue#18520

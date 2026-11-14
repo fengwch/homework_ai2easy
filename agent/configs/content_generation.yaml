@@ -1,0 +1,63 @@
+# 内容生成服务配置
+# 模型与 API Key 从 .env 的 DASHSCOPE_API_KEY、MODEL_NAME 读取
+
+story:
+  # 故事长度（字）
+  min_chars: 300
+  max_chars: 500
+  # 默认主题（当儿童兴趣未匹配时）
+  default_theme: "小动物学习"
+
+illustration:
+  # 是否仅生成插图提示（true=不调用绘图 API，false=调用 TTAPI Midjourney 或 Gemini 生成图）
+  prompts_only: false
+  # 绘图接口：ttapi_midjourney | gemini（改用 gemini 时提示词构建通用，仅不追加 --cref/--v 6.0，且模板中 MJ 参数会自动去掉）
+  # provider: ttapi_midjourney
+  provider: gemini
+  # 风格：anime | cartoon | line_art（黑白线稿）| children（儿童漫画 / 连载漫画风格）
+  style: children
+  # 是否黑白线稿
+  line_art: false
+  # 每段故事生成的图数（几格），1～4，一般建议 3～4 格保证连贯分镜
+  panels_per_prompt: 3
+  # 单张图内的分镜数（如 6 格连环画），用于多格漫画
+  panels_in_image: 12
+  # 多格布局，如 "2x3" 表示两行三列（参考郑人买履式连环画）
+  panels_layout: "3x4"
+  # 分镜内包含人物对话/场景对话（对话框、旁白）。
+  # 设为 false 时：不再强调对话/旁白，同时在提示词中要求每格底部预留较高的空白横条，便于后续添加旁白文字。
+  include_dialogue: true
+  # 后台配置的参考图 URL（仅在 provider: ttapi_midjourney 时用于风格/角色参考；通过 TTAPI Midjourney 的 --cref 传入）
+  reference_image_url: "https://hw.gameyeah.net/uploads/references/5.png"
+  # 连载漫画 Prompt 模板，用于控制分镜连贯性与角色一致性
+  prompt_template: "[manga style], [page layout], [scene description], [characters], [emotion/action], [detailed instructions] --ar 16:9 --style raw --v 6.0"
+  # Midjourney 模式：fast(约60s) | turbo(约30s) | relax(约120s)
+  ttapi_mode: fast
+  # TTAPI 任务轮询超时（秒），单次 imagine/fetch 请求另有 30s/15s 超时
+  ttapi_timeout: 300
+  # 插图接口整体超时（秒），超时返回 504；不设则用 ttapi_timeout + 60
+  api_timeout: 360
+  # Gemini 图片模型专用配置（仅在 provider: gemini 时生效）
+  # 官方文档：https://docs-zh.mjapiapp.com/api/gemini-image-model
+  # 模型版本：gemini-2.5-flash-image-preview | gemini-2.5-flash-image | gemini-3-pro-image-preview | gemini-3.1-flash-image-preview
+  gemini_mode: "gemini-3.1-flash-image-preview"
+  # 图片比例，例如 1:1, 9:16,16:9, 3:4 等；为空则使用接口默认
+  gemini_aspect_ratio: "9:16"
+  # 图片分辨率：1K | 2K | 4K，仅在 gemini-3-pro-image-preview 下生效
+  gemini_image_size: "1K"
+  # 是否启用 Google 搜索增强
+  gemini_google_search: false
+  # 思考等级：Minimal | High，仅在 gemini-3.1-flash-image-preview 等支持 thinking_level 的模型下生效
+  gemini_thinking_level: null
+  # 参考垫图 URL 列表（用于风格/角色参考），对应 TTAPI Gemini 的 refer_images 参数
+  # 例如：
+  # gemini_refer_images:
+  #   - "https://cdn.ttapi.io/demo/xxx1.jpg"
+  #   - "https://cdn.ttapi.io/demo/xxx2.jpg"
+  gemini_refer_images: []
+  # 每个分镜的裁剪图存储路径
+  img_extractor_output_dir: "uploads/img_extractor/"
+
+solution_guide:
+  # 与故事主题一致，分步讲解
+  max_steps: 5

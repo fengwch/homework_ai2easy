@@ -1,0 +1,3 @@
+# 开发与测试依赖（在 requirements.txt 基础上追加）
+-r requirements.txt
+pytest>=9.0

@@ -1,0 +1,738 @@
+<template>
+  <view class="container">
+    <view v-if="loading" class="loading">
+      <text>加载中...</text>
+    </view>
+    
+    <view v-else-if="content" class="story-container">
+      <scroll-view scroll-y class="story-scroll">
+        <!-- 封面/标题 -->
+        <view class="cover-section">
+          <text class="story-title">{{ content.title }}</text>
+          <text v-if="content.summary" class="story-summary">{{ content.summary }}</text>
+          <text v-if="content.theme" class="story-theme">主题：{{ content.theme }}</text>
+        </view>
+
+        <!-- 插图：生成中占位 / 已生成配图（头部插图区域） -->
+        <view v-if="isStoryImageGenerating" class="images-section image-gen-wrap">
+          <view class="image-gen-loading">
+            <text class="image-gen-loading-text">图片生成中{{ imageGenProgressText }}</text>
+          </view>
+        </view>
+        <view v-else-if="displayImages.length > 0" class="images-section">
+          <view v-if="imagesLoading" class="images-loading">
+            <text>图片加载中...</text>
+          </view>
+          <image
+            v-for="(img, idx) in displayImages"
+            :key="idx"
+            class="story-image"
+            :src="img"
+            mode="widthFix"
+            @load="onImageLoaded"
+            @error="onImageLoaded"
+            @longpress="onLongPressStoryImage(img)"
+          />
+        </view>
+
+        <!-- 故事正文（支持分段） -->
+        <view class="story-section">
+          <text class="story-text">{{ content.story }}</text>
+        </view>
+
+        <!-- 练习题预览 -->
+        <view v-if="content.questions && content.questions.length > 0" class="questions-preview">
+          <text class="section-title">📝 练习题（{{ content.questions.length }}题）</text>
+          <view
+            v-for="(q, index) in content.questions"
+            :key="q.id || index"
+            class="question-preview"
+          >
+            <text class="q-number">第{{ index + 1 }}题</text>
+            <text class="q-content">{{ q.content }}</text>
+          </view>
+        </view>
+      </scroll-view>
+
+      <view class="footer">
+        <button
+          class="read-btn"
+          :disabled="voiceLoading"
+          @click="readAloud"
+        >
+          {{ voiceLoading ? '合成中...' : voicePlaying && !voicePaused ? '⏸ 暂停朗读' : voicePaused ? '▶ 继续朗读' : '🔊 朗读故事' }}
+        </button>
+        <button
+          v-if="hasChoiceQuestions"
+          class="start-btn"
+          @click="goToAnswer"
+        >
+          开始答题
+        </button>
+        <button class="print-btn" @click="goToPrint">打印学习材料</button>
+      </view>
+    </view>
+
+    <view v-else class="empty">
+      <text>暂无学习内容</text>
+    </view>
+  </view>
+</template>
+
+<script setup lang="uts">
+import { ref, computed, onMounted, watch } from 'vue'
+import { onShareAppMessage, onShareTimeline, onHide, onUnload } from '@dcloudio/uni-app'
+import { fetchLearningContent } from '@/api/content'
+import type { LearningContent } from '@/api/content'
+import { getGenerateStatus, getQuestionGenerateStatus } from '@/api/assignment'
+import { useVoicePlay } from '@/utils/voice'
+import { resolveResourceUrl } from '@/utils/image'
+
+const content = ref<LearningContent | null>(null)
+/** 插图生成状态（来自 contents、单题或作业级 GET .../generate-status） */
+const imageGenStatus = ref<string | null>(null)
+const imageGenProgress = ref<number | null>(null)
+
+const CONTENT_POLL_MS = 2500
+let contentPollTimer: ReturnType<typeof setTimeout> | null = null
+/** 最近一次单题或作业级 generate-status 响应，用于 contents 未返回 imageStatus 时的推断 */
+const lastGenerateStatusPayload = ref<any>(null)
+
+/** 故事配图列表：兼容后端 images / image_list，并解析为完整 URL 便于小程序展示 */
+const displayImages = computed(() => {
+  const c = content.value
+  if (!c) return []
+  const raw = (c as any).images ?? (c as any).image_list ?? (c as any).imageList ?? []
+  if (!Array.isArray(raw)) return []
+  return raw.map((url: string) => resolveResourceUrl(url)).filter((url: string) => !!url)
+})
+/** 图片加载状态：有图时先展示 loading，全部加载完后隐藏 */
+const imagesLoading = ref<boolean>(false)
+const imagesLoadedCount = ref<number>(0)
+/** 是否包含选择题（用于控制「开始答题」按钮显示） */
+const hasChoiceQuestions = computed(() => {
+  const c = content.value
+  if (!c || !Array.isArray(c.questions) || c.questions.length === 0) return false
+  return c.questions.some((q: any) => Array.isArray(q.options) && q.options.length > 0)
+})
+
+/** 后端返回插图仍在生成（pending / processing） */
+const isStoryImageGenerating = computed(() => {
+  const s = imageGenStatus.value
+  if (!s) return false
+  return s === 'pending' || s === 'processing'
+})
+
+/** 生成中时的进度文案，如「....」或「（60%）」 */
+const imageGenProgressText = computed(() => {
+  const p = imageGenProgress.value
+  if (typeof p === 'number' && p >= 0 && p <= 100) {
+    return `（${p}%）`
+  }
+  return '....'
+})
+const { loading: voiceLoading, playing: voicePlaying, paused: voicePaused, speak, pause: voicePause, resume: voiceResume, stop } = useVoicePlay()
+const loading = ref(true)
+const storyId = ref('')
+const assignmentId = ref('')
+/** 题目 id（与作业详情轮询 /assignments/{id}/questions/{qid}/generate-status 一致） */
+const questionId = ref('')
+const questionIndex = ref<number | null>(null)
+
+// #ifdef MP-WEIXIN
+// 当前故事页分享给朋友
+onShareAppMessage(() => {
+  const id = storyId.value || ''
+  return {
+    title: content.value?.title || 'AI 作业助手 - 故事学习',
+    path: id ? `/pages/learning/story?storyId=${id}` : '/pages/learning/story'
+  }
+})
+
+// 当前故事分享到朋友圈
+onShareTimeline(() => {
+  return {
+    title: content.value?.title || 'AI 作业助手 - 故事学习'
+  }
+})
+// #endif
+
+onMounted(() => {
+  loadStory()
+})
+
+// 监控图片列表变化：每次故事或图片列表变化时，重置图片加载状态；配图已返回则结束「插图生成中」
+watch(
+  () => displayImages.value.length,
+  (len: number) => {
+    if (len > 0) {
+      imagesLoading.value = true
+      imagesLoadedCount.value = 0
+      if (imageGenStatus.value === 'pending' || imageGenStatus.value === 'processing') {
+        imageGenStatus.value = 'completed'
+        imageGenProgress.value = 100
+      }
+    } else {
+      imagesLoading.value = false
+      imagesLoadedCount.value = 0
+    }
+  },
+  { immediate: true }
+)
+
+// 离开本页时（包括返回上一页、跳转到其他页面、切换 Tab 等），主动停止朗读并停止插图状态轮询
+onHide(() => {
+  clearContentPoll()
+  stop()
+})
+
+onUnload(() => {
+  clearContentPoll()
+  stop()
+})
+
+function onImageLoaded() {
+  const total = displayImages.value.length
+  if (total <= 0) {
+    imagesLoading.value = false
+    return
+  }
+  imagesLoadedCount.value = imagesLoadedCount.value + 1
+  if (imagesLoadedCount.value >= total) {
+    imagesLoading.value = false
+  }
+}
+
+function extractImageGen(raw: any) {
+  const st = raw.imageStatus ?? raw.image_status ?? null
+  imageGenStatus.value = st
+  const prog = raw.imageProgress ?? raw.image_progress
+  imageGenProgress.value = typeof prog === 'number' ? prog : null
+}
+
+function clearContentPoll() {
+  if (contentPollTimer) {
+    clearTimeout(contentPollTimer)
+    contentPollTimer = null
+  }
+}
+
+/** 根据 generate-status 判断插图是否已结束且需要拉取学习材料里的配图 URL */
+function shouldReloadStoryContentForImages(data: any): boolean {
+  if (!data) return false
+  const imgSt = String(data.imageStatus ?? data.image_status ?? '').toLowerCase()
+  if (imgSt === 'failed') return false
+  if (imgSt === 'completed') return true
+  const imgProg = data.imageProgress ?? data.image_progress
+  if (typeof imgProg === 'number' && imgProg >= 100) return true
+  return false
+}
+
+function scheduleContentPollIfNeeded() {
+  clearContentPoll()
+  if (!storyId.value) return
+  if (!isStoryImageGenerating.value) return
+  // 有作业上下文：仅轮询 generate-status，不整页刷新学习材料
+  if (assignmentId.value) {
+    contentPollTimer = setTimeout(() => {
+      pollGenerateStatusOnly()
+    }, CONTENT_POLL_MS)
+    return
+  }
+  // 无 assignmentId 无法调 generate-status，退化为轮询拉取学习材料
+  contentPollTimer = setTimeout(() => {
+    pollStoryContentFallback()
+  }, CONTENT_POLL_MS)
+}
+
+/**
+ * 插图生成中：只请求单题/作业级 generate-status 更新进度；
+ * 当插图状态为 completed（或进度 100%）时再拉取一次学习材料以加载配图。
+ */
+function pollGenerateStatusOnly() {
+  const sid = storyId.value
+  if (!sid || !assignmentId.value) return
+  mergeGenerateStatusFromApi()
+    .then(() => {
+      inferImageGenWhenUnknown()
+    })
+    .then(() => {
+      const data = lastGenerateStatusPayload.value
+      if (shouldReloadStoryContentForImages(data)) {
+        clearContentPoll()
+        return fetchLearningContent(sid)
+          .then((raw) => {
+            applyStoryData(raw as any, true, { skipMergeGenerateStatus: true })
+          })
+          .catch(() => {
+            if (storyId.value === sid) {
+              contentPollTimer = setTimeout(() => {
+                fetchLearningContent(sid)
+                  .then((raw) => applyStoryData(raw as any, true, { skipMergeGenerateStatus: true }))
+                  .catch(() => {})
+              }, CONTENT_POLL_MS)
+            }
+          })
+      }
+      const imgSt = String(data?.imageStatus ?? data?.image_status ?? '').toLowerCase()
+      if (imgSt === 'failed') {
+        clearContentPoll()
+        return
+      }
+      if (isStoryImageGenerating.value) {
+        scheduleContentPollIfNeeded()
+      } else {
+        clearContentPoll()
+      }
+    })
+    .catch(() => {
+      if (isStoryImageGenerating.value && assignmentId.value) {
+        scheduleContentPollIfNeeded()
+      }
+    })
+}
+
+/** 无作业 ID 时无法轮询 generate-status，静默整页拉取学习材料（兜底） */
+function pollStoryContentFallback() {
+  const sid = storyId.value
+  if (!sid) return
+  fetchLearningContent(sid)
+    .then((data) => {
+      applyStoryData(data as any, true)
+    })
+    .catch(() => {
+      if (isStoryImageGenerating.value) {
+        scheduleContentPollIfNeeded()
+      }
+    })
+}
+
+/** 从 generate-status 响应写入插图状态与进度（与 assignment/detail 展示逻辑对齐） */
+function applyImageGenFromStatusPayload(data: any) {
+  const imgSt = data.imageStatus ?? data.image_status
+  const prog = data.imageProgress ?? data.image_progress
+  if (imgSt != null && String(imgSt) !== '') {
+    imageGenStatus.value = String(imgSt)
+  }
+  if (typeof prog === 'number') {
+    imageGenProgress.value = prog
+  }
+}
+
+/**
+ * 拉取生成状态：优先单题 GET .../assignments/{id}/questions/{qid}/generate-status，
+ * 否则作业级 GET .../assignments/{id}/generate-status（与详情页一致）。
+ */
+function mergeGenerateStatusFromApi(): Promise<void> {
+  const aid = parseInt(String(assignmentId.value || '0'), 10)
+  if (!aid) return Promise.resolve()
+  const qid = String(questionId.value || '').trim()
+  if (qid !== '') {
+    return getQuestionGenerateStatus(aid, qid)
+      .then((data: any) => {
+        lastGenerateStatusPayload.value = data
+        applyImageGenFromStatusPayload(data)
+      })
+      .catch(() => {})
+  }
+  return getGenerateStatus(aid)
+    .then((data: any) => {
+      lastGenerateStatusPayload.value = data
+      applyImageGenFromStatusPayload(data)
+    })
+    .catch(() => {})
+}
+
+/**
+ * contents 与 generate-status 均未给出 imageStatus 时：若正文已就绪、仍无配图 URL，
+ * 且作业主流程已完成，则假定插图仍在异步生成（与后端未回 imageStatus 的情况对齐）。
+ */
+function inferImageGenWhenUnknown() {
+  if (imageGenStatus.value) return
+  const aid = parseInt(String(assignmentId.value || '0'), 10)
+  if (!aid) return
+  const storyText = (content.value as any)?.story || ''
+  if (!String(storyText).trim()) return
+  if (displayImages.value.length > 0) return
+  const d = lastGenerateStatusPayload.value
+  if (!d) return
+  const imgSt = d.imageStatus ?? d.image_status
+  if (imgSt === 'none' || imgSt === 'failed' || imgSt === 'completed') return
+  const mainOk = d.status === 'completed' || (d.progress ?? 0) >= 100
+  if (mainOk && (imgSt == null || imgSt === '')) {
+    imageGenStatus.value = 'processing'
+  }
+}
+
+function applyStoryData(raw: any, silent: boolean, opts?: { skipMergeGenerateStatus?: boolean }) {
+  if (!silent) {
+    stop()
+  }
+  extractImageGen(raw)
+  content.value = {
+    ...raw,
+    images: raw.images ?? raw.image_list ?? raw.imageList ?? []
+  }
+  const finishSchedule = () => {
+    if (isStoryImageGenerating.value) {
+      scheduleContentPollIfNeeded()
+    } else {
+      clearContentPoll()
+    }
+  }
+  if (assignmentId.value && !opts?.skipMergeGenerateStatus) {
+    mergeGenerateStatusFromApi()
+      .then(() => {
+        inferImageGenWhenUnknown()
+      })
+      .then(finishSchedule)
+      .catch(finishSchedule)
+  } else {
+    finishSchedule()
+  }
+}
+
+function loadStory() {
+  const pages = getCurrentPages()
+  const currentPage = pages[pages.length - 1]
+  const options = currentPage.options || {}
+  const id = options.storyId || options.id || ''
+  const aid = options.assignmentId || ''
+  const qidRaw = options.questionId || options.question_id || ''
+  questionId.value = qidRaw != null && String(qidRaw) !== '' ? String(qidRaw) : ''
+  const qIdx = options.questionIndex != null ? parseInt(String(options.questionIndex), 10) : NaN
+  if (!isNaN(qIdx) && qIdx >= 0) {
+    questionIndex.value = qIdx
+  }
+  
+  if (!id) {
+    uni.showToast({
+      title: '故事ID无效',
+      icon: 'none'
+    })
+    setTimeout(() => {
+      uni.navigateBack()
+    }, 1500)
+    return
+  }
+  
+  clearContentPoll()
+  imageGenStatus.value = null
+  imageGenProgress.value = null
+  lastGenerateStatusPayload.value = null
+  storyId.value = id
+  assignmentId.value = aid
+  loading.value = true
+  
+  fetchLearningContent(id)
+    .then((data) => {
+      applyStoryData(data as any, false)
+    })
+    .catch((err) => {
+      console.error('加载学习材料失败:', err)
+      uni.showToast({
+        title: '加载失败',
+        icon: 'none'
+      })
+    })
+    .finally(() => {
+      loading.value = false
+    })
+}
+
+function goToAnswer() {
+  if (assignmentId.value && storyId.value) {
+    let params = `assignmentId=${assignmentId.value}&storyId=${storyId.value}`
+    if (questionIndex.value != null) params += `&questionIndex=${questionIndex.value}`
+    if (questionId.value) params += `&questionId=${questionId.value}`
+    uni.redirectTo({
+      url: `/pages/learning/answer?${params}`
+    })
+  } else {
+    uni.navigateBack()
+  }
+}
+
+function goToPrint() {
+  uni.navigateTo({
+    url: `/pages/print/preview?storyId=${storyId.value}&assignmentId=${assignmentId.value}`
+  })
+}
+
+function onLongPressStoryImage(src: string) {
+  if (!src) return
+  // #ifdef MP-WEIXIN
+  uni.showActionSheet({
+    itemList: ['保存到相册'],
+    success: (res) => {
+      if (res.tapIndex === 0) {
+        saveImageToAlbum(src)
+      }
+    }
+  })
+  // #endif
+}
+
+function saveImageToAlbum(src: string) {
+  // #ifdef MP-WEIXIN
+  uni.showLoading({ title: '保存中...', mask: true })
+  if (!src) {
+    uni.hideLoading()
+    return
+  }
+  const isNetwork = src.startsWith('http://') || src.startsWith('https://')
+
+  const doSave = (filePath: string) => {
+    uni.saveImageToPhotosAlbum({
+      filePath,
+      success() {
+        uni.showToast({ title: '已保存到相册', icon: 'success' })
+      },
+      fail(err) {
+        console.error('保存图片失败:', err)
+        const msg = String((err as any)?.errMsg || '')
+        if (msg.indexOf('auth') !== -1 || msg.indexOf('authorize') !== -1) {
+          uni.showToast({ title: '请授权保存到相册', icon: 'none', duration: 2500 })
+        } else {
+          uni.showToast({ title: '保存失败', icon: 'none' })
+        }
+      },
+      complete() {
+        uni.hideLoading()
+      }
+    })
+  }
+
+  if (isNetwork) {
+    uni.downloadFile({
+      url: src,
+      success(res) {
+        if (res.statusCode === 200 && res.tempFilePath) {
+          doSave(res.tempFilePath)
+        } else {
+          console.error('下载图片失败:', res)
+          uni.showToast({ title: '保存失败', icon: 'none' })
+          uni.hideLoading()
+        }
+      },
+      fail(err) {
+        console.error('下载图片失败:', err)
+        uni.showToast({ title: '保存失败', icon: 'none' })
+        uni.hideLoading()
+      }
+    })
+  } else {
+    doSave(src)
+  }
+  // #endif
+}
+
+function readAloud() {
+  if (voiceLoading.value) return
+  if (voicePlaying.value && !voicePaused.value) {
+    voicePause()
+    return
+  }
+  if (voicePaused.value) {
+    voiceResume()
+    return
+  }
+  const c = content.value
+  if (!c) return
+  const text = c.story || ''
+  speak(text, { voice: 'xiaoyun' })
+}
+</script>
+
+<style scoped lang="scss">
+.container {
+  width: 100%;
+  height: 100vh;
+  background: #f5f5f5;
+}
+
+.loading, .empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  font-size: 28rpx;
+  color: #999;
+}
+
+.story-container {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.story-scroll {
+  flex: 1;
+  padding: 32rpx;
+}
+
+.cover-section {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 48rpx 40rpx;
+  border-radius: 20rpx;
+  margin-bottom: 32rpx;
+  color: #fff;
+}
+
+.story-title {
+  font-size: 40rpx;
+  font-weight: bold;
+  display: block;
+  margin-bottom: 16rpx;
+}
+
+.story-summary {
+  font-size: 26rpx;
+  opacity: 0.9;
+  line-height: 1.6;
+  display: block;
+}
+
+.story-theme {
+  font-size: 24rpx;
+  opacity: 0.85;
+  margin-top: 12rpx;
+  display: block;
+}
+
+.images-section {
+  margin-bottom: 32rpx;
+  border-radius: 16rpx;
+  overflow: hidden;
+  background: #fff;
+}
+
+.image-gen-wrap {
+  min-height: 200rpx;
+}
+
+.image-gen-loading {
+  padding: 48rpx 32rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200rpx;
+}
+
+.image-gen-loading-text {
+  font-size: 28rpx;
+  color: #667eea;
+}
+
+.images-loading {
+  padding: 40rpx 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26rpx;
+  color: #999;
+}
+
+.story-image {
+  width: 100%;
+  display: block;
+  vertical-align: top;
+}
+
+.story-section {
+  background: #fff;
+  padding: 40rpx;
+  border-radius: 16rpx;
+  margin-bottom: 32rpx;
+}
+
+.story-text {
+  font-size: 30rpx;
+  line-height: 1.9;
+  color: #333;
+  white-space: pre-wrap;
+  display: block;
+}
+
+.questions-preview {
+  background: #fff;
+  padding: 40rpx;
+  border-radius: 16rpx;
+  margin-bottom: 32rpx;
+}
+
+.section-title {
+  font-size: 30rpx;
+  font-weight: bold;
+  color: #333;
+  display: block;
+  margin-bottom: 24rpx;
+}
+
+.question-preview {
+  padding: 24rpx;
+  background: #f9f9f9;
+  border-radius: 12rpx;
+  margin-bottom: 16rpx;
+}
+
+.q-number {
+  font-size: 24rpx;
+  color: #667eea;
+  display: block;
+  margin-bottom: 8rpx;
+}
+
+.q-content {
+  font-size: 28rpx;
+  color: #666;
+  line-height: 1.5;
+}
+
+.footer {
+  padding: 24rpx 32rpx;
+  background: #fff;
+  border-top: 2rpx solid #f5f5f5;
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.read-btn {
+  width: 100%;
+  height: 80rpx;
+  background: #f0f4ff;
+  color: #667eea;
+  border: 2rpx solid #667eea;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+}
+
+.read-btn[disabled] {
+  opacity: 0.7;
+  color: #667eea;
+  background: #e2e6ff;
+  border-color: #667eea;
+}
+
+.start-btn {
+  width: 100%;
+  height: 88rpx;
+  background: #667eea;
+  color: #fff;
+  border-radius: 12rpx;
+  font-size: 32rpx;
+  border: none;
+}
+
+.print-btn {
+  width: 100%;
+  height: 80rpx;
+  background: #fff;
+  color: #667eea;
+  border: 2rpx solid #667eea;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+}
+</style>

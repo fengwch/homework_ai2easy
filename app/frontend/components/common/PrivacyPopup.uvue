@@ -1,0 +1,111 @@
+<template>
+  <view v-if="visible" class="privacy-mask" @click.stop>
+    <view class="privacy-modal" @click.stop>
+      <text class="privacy-title">用户隐私保护提示</text>
+      <text class="privacy-desc">您使用本产品服务前应当阅读并同意《智趣作业辅导小程序隐私保护指引》</text>
+      <text class="privacy-hint">当您点击同意并开始使用产品服务时，即表示您已理解并同意该条款内容，该条款将对您产生法律约束力。如您拒绝，将无法使用该产品服务。</text>
+      <view class="privacy-btns">
+        <button class="privacy-btn reject" @click="onReject">拒绝</button>
+        <button class="privacy-btn agree" @click="onAgree">同意</button>
+      </view>
+    </view>
+  </view>
+</template>
+
+<script setup lang="uts">
+const PRIVACY_AGREED_KEY = 'privacy_agreed'
+
+const visible = ref(false)
+
+onMounted(() => {
+  const agreed = uni.getStorageSync(PRIVACY_AGREED_KEY)
+  if (!agreed) {
+    visible.value = true
+  }
+})
+
+function onAgree() {
+  uni.setStorageSync(PRIVACY_AGREED_KEY, true)
+  visible.value = false
+}
+
+function onReject() {
+  visible.value = false
+  uni.showToast({ title: '您已拒绝，将无法使用该产品服务', icon: 'none', duration: 3000 })
+}
+</script>
+
+<style scoped lang="scss">
+.privacy-mask {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 9999;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.privacy-modal {
+  width: 100%;
+  max-width: 750rpx;
+  background: #fff;
+  border-radius: 24rpx 24rpx 0 0;
+  padding: 48rpx 40rpx 64rpx;
+}
+
+.privacy-title {
+  display: block;
+  font-size: 36rpx;
+  font-weight: bold;
+  color: #333;
+  text-align: center;
+  margin-bottom: 32rpx;
+}
+
+.privacy-desc {
+  display: block;
+  font-size: 28rpx;
+  color: #333;
+  line-height: 1.6;
+  margin-bottom: 24rpx;
+}
+
+.privacy-hint {
+  display: block;
+  font-size: 24rpx;
+  color: #999;
+  line-height: 1.5;
+  margin-bottom: 48rpx;
+}
+
+.privacy-btns {
+  display: flex;
+  gap: 24rpx;
+}
+
+.privacy-btn {
+  flex: 1;
+  height: 88rpx;
+  border-radius: 12rpx;
+  font-size: 32rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.privacy-btn.reject {
+  background: #fff;
+  color: #666;
+  border: 2rpx solid #ccc;
+}
+
+.privacy-btn.agree {
+  background: #07c160;
+  color: #fff;
+  border: none;
+}
+</style>

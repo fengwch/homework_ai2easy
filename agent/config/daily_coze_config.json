@@ -1,0 +1,20 @@
+[{
+  "name": "Daily Coze Workflow Job",
+  "schedule": {
+    "kind": "cron",
+    "expr": "0 9 * * *",
+    "tz": "Asia/Shanghai"
+  },
+  "payload": {
+    "kind": "agentTurn",
+    "message": "Run the daily Coze workflow to generate math exercises for children with random themes",
+    "timeoutSeconds": 1800
+  },
+  "sessionTarget": "isolated",
+  "enabled": true,
+  "delivery": {
+    "mode": "announce",
+    "channel": "feishu",
+    "to": "oc_50f16f30e5ab18615b8a2975b5708c96"
+  }
+}]

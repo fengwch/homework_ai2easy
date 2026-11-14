@@ -1,0 +1,105 @@
+syntax = "proto3";
+
+package conf.v1;
+
+option go_package = "homework_ai2easy/backend/internal/conf;conf";
+
+import "google/protobuf/duration.proto";
+
+message Bootstrap {
+  Server server = 1;
+  Data data = 2;
+  JWT jwt = 3;
+  SMS sms = 4;
+  Logger logger = 5;
+  AiAgent ai_agent = 6;
+  Wechat wechat = 7;  // 微信小程序登录（code2Session）
+}
+
+// Wechat 微信小程序配置（静默登录用 code 换 openid）
+message Wechat {
+  string app_id = 1;      // 小程序 AppID
+  string app_secret = 2;  // 小程序 AppSecret，仅存后端
+  google.protobuf.Duration timeout = 3;  // code2Session 请求超时，默认 15s；国内网络可适当调大
+}
+
+// AiAgent AI Agent 服务配置（OCR、内容生成等能力）
+message AiAgent {
+  string url = 1;  // AI Agent 服务地址，如 http://0.0.0.0:8001
+  google.protobuf.Duration timeout = 2;  // 请求超时，默认 600s，避免长任务超时
+}
+
+// Logger 日志配置（遵循日志系统规范：Zap + lumberjack，json/text，stdout/file/both）
+message Logger {
+  string level = 1;            // 级别: debug, info, warn/warning, error, fatal，默认 info
+  string format = 2;           // 编码: json 或 text，默认 json
+  string output = 3;           // 输出: stdout | file | both，默认 both
+  string file_path = 4;        // 文件路径，output 为 file 或 both 时生效，默认 logs/app.log
+  int32 max_size = 5;          // 单文件最大大小（MB），默认 100
+  int32 max_backups = 6;       // 保留备份个数，默认 5
+  int32 max_age = 7;           // 保留天数，默认 30
+  bool compress = 8;           // 是否压缩历史文件，默认 true
+  bool enable_caller = 9;      // 是否记录调用者信息，默认 true
+  bool enable_stacktrace = 10; // Error 及以上是否记录堆栈，默认 false
+}
+
+message Server {
+  HTTP http = 1;
+  GRPC grpc = 2;
+  CORS cors = 3;
+  // api_base_url 对外 API 根地址，用于生成 PDF 下载等链接；如 https://your-domain.com（无尾部斜杠）。不配置时使用请求的 Host。
+  string api_base_url = 4;
+}
+
+// CORS 跨域配置，测试环境下启用以便前端直接访问后端接口
+message CORS {
+  bool enabled = 1;
+  repeated string allow_origins = 2;   // 如 * 或 http://localhost:5173；带 credentials 时须具体源
+  repeated string allow_methods = 3;   // GET, POST, PUT, PATCH, DELETE, OPTIONS
+  repeated string allow_headers = 4;   // Content-Type, Authorization 等
+  bool allow_credentials = 5;          // true 时须用具体 allow_origins，不可 *
+}
+
+message HTTP {
+  string addr = 1;
+  google.protobuf.Duration timeout = 2;
+}
+
+message GRPC {
+  string addr = 1;
+  google.protobuf.Duration timeout = 2;
+}
+
+message Data {
+  Database database = 1;
+  Redis redis = 2;
+}
+
+message Database {
+  string driver = 1;
+  string source = 2;
+}
+
+message Redis {
+  string addr = 1;
+  string password = 2;
+  int32 db = 3;
+}
+
+message JWT {
+  string secret = 1;
+  google.protobuf.Duration expires_in = 2;
+}
+
+// SMS 短信服务配置
+message SMS {
+  google.protobuf.Duration expires_in = 1;  // 验证码过期时间（默认5分钟）
+  string provider = 2;  // 服务商: aliyun/tencent/huawei/mock (mock为开发模式，不实际发送)
+  string access_key_id = 3;  // AccessKey ID / SecretId / AK（生产环境必填）
+  string access_key_secret = 4;  // AccessKey Secret / SecretKey / SK（生产环境必填）
+  string sign_name = 5;  // 短信签名（需要在服务商平台申请，生产环境必填）
+  string template_code = 6;  // 模板代码（需要在服务商平台申请，生产环境必填）
+  string region = 7;  // 区域（如：cn-hangzhou, ap-guangzhou，生产环境必填）
+  string endpoint = 8;  // 自定义端点（可选，通常不需要）
+  string test_code = 9;  // 测试环境万能验证码；配置后登录/注册/重置密码均可使用此码跳过校验
+}

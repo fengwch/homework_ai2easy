@@ -1,0 +1,210 @@
+{
+  "date": "2026-11-06",
+  "student_name": "冯昱乔",
+  "slogan": "",
+  "items": [
+    {
+      "seq": 1,
+      "subject": "语文",
+      "task": "大声拼读p51-52三遍",
+      "quantity": "三遍",
+      "requirements": [],
+      "requirements_all": [],
+      "priority": "normal",
+      "priority_signals": [],
+      "estimated_minutes": null,
+      "type": "oral",
+      "provenance": {
+        "task": "verbatim",
+        "quantity": "verbatim",
+        "subject": "verbatim"
+      }
+    },
+    {
+      "seq": 2,
+      "subject": "语文",
+      "task": "朗读p53儿歌《家》三遍，并尝试续编两句儿歌",
+      "quantity": "三遍",
+      "requirements": [],
+      "requirements_all": [
+        "续编两句儿歌"
+      ],
+      "priority": "normal",
+      "priority_signals": [],
+      "estimated_minutes": null,
+      "type": "oral",
+      "provenance": {
+        "task": "verbatim",
+        "quantity": "verbatim",
+        "subject": "verbatim"
+      }
+    },
+    {
+      "seq": 3,
+      "subject": "语文",
+      "task": "预习p54-55",
+      "quantity": "",
+      "requirements": [],
+      "requirements_all": [],
+      "priority": "normal",
+      "priority_signals": [],
+      "estimated_minutes": null,
+      "type": "reading",
+      "provenance": {
+        "task": "verbatim",
+        "quantity": "verbatim",
+        "subject": "verbatim"
+      }
+    },
+    {
+      "seq": 4,
+      "subject": "数学",
+      "task": "查P47-53",
+      "quantity": "",
+      "requirements": [],
+      "requirements_all": [],
+      "priority": "normal",
+      "priority_signals": [],
+      "estimated_minutes": null,
+      "type": "reading",
+      "provenance": {
+        "task": "verbatim",
+        "quantity": "verbatim",
+        "subject": "verbatim"
+      }
+    },
+    {
+      "seq": 5,
+      "subject": "数学",
+      "task": "说一说【请看班优】",
+      "quantity": "",
+      "requirements": [],
+      "requirements_all": [
+        "【请看班优】"
+      ],
+      "priority": "normal",
+      "priority_signals": [],
+      "estimated_minutes": null,
+      "type": "oral",
+      "provenance": {
+        "task": "verbatim",
+        "quantity": "verbatim",
+        "subject": "verbatim"
+      }
+    },
+    {
+      "seq": 6,
+      "subject": "英语",
+      "task": "读u1-u2",
+      "quantity": "",
+      "requirements": [],
+      "requirements_all": [],
+      "priority": "normal",
+      "priority_signals": [],
+      "estimated_minutes": null,
+      "type": "reading",
+      "provenance": {
+        "task": "verbatim",
+        "quantity": "verbatim",
+        "subject": "verbatim"
+      }
+    }
+  ],
+  "extras": [],
+  "pending": [],
+  "source_text": "11月6日\n语文\n1.大声拼读p51-52三遍\n2.朗读p53儿歌《家》三遍，并尝试续编两句儿\n歌\n3.预习p54-55\n数学\n1、查P47-53\n2、说一说【请看班优】\n英语\n读u1-u2",
+  "source_kind": "ocr",
+  "report": {
+    "traced": [
+      {
+        "where": "item1.task",
+        "value": "大声拼读p51-52三遍",
+        "level": "verbatim"
+      },
+      {
+        "where": "item1.quantity",
+        "value": "三遍",
+        "level": "verbatim"
+      },
+      {
+        "where": "item2.task",
+        "value": "朗读p53儿歌《家》三遍，并尝试续编两句儿歌",
+        "level": "verbatim"
+      },
+      {
+        "where": "item2.quantity",
+        "value": "三遍",
+        "level": "verbatim"
+      },
+      {
+        "where": "item2.requirements",
+        "value": "续编两句儿歌",
+        "level": "verbatim"
+      },
+      {
+        "where": "item3.task",
+        "value": "预习p54-55",
+        "level": "verbatim"
+      },
+      {
+        "where": "item3.quantity",
+        "value": "",
+        "level": "verbatim"
+      },
+      {
+        "where": "item4.task",
+        "value": "查P47-53",
+        "level": "verbatim"
+      },
+      {
+        "where": "item4.quantity",
+        "value": "",
+        "level": "verbatim"
+      },
+      {
+        "where": "item5.task",
+        "value": "说一说【请看班优】",
+        "level": "verbatim"
+      },
+      {
+        "where": "item5.quantity",
+        "value": "",
+        "level": "verbatim"
+      },
+      {
+        "where": "item5.requirements",
+        "value": "【请看班优】",
+        "level": "verbatim"
+      },
+      {
+        "where": "item6.task",
+        "value": "读u1-u2",
+        "level": "verbatim"
+      },
+      {
+        "where": "item6.quantity",
+        "value": "",
+        "level": "verbatim"
+      }
+    ],
+    "advisories": [],
+    "uncovered": [
+      "11月6日"
+    ],
+    "priority_overrides": [],
+    "notes": [
+      "家长确认不纳入：11月6日",
+      "家长确认不纳入：冯昱乔",
+      "家长确认不纳入：（本图来自 OCR 识别，请家长核对每一项）"
+    ],
+    "stats": {
+      "items_safe": 6,
+      "items_dropped": 0,
+      "unsourced": 0,
+      "advisories": 0,
+      "auto_dropped_boilerplate": 0,
+      "uncovered": 1
+    }
+  },
+  "unresolved": []
+}

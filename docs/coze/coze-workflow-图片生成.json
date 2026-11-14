@@ -1,0 +1,117 @@
+{
+  "name": "儿童故事与插图生成工作流",
+  "description": "从儿童档案与题目生成个性化故事，再生成插图提示并调用 TTAPI Gemini/Midjourney 绘图。可直接按节点在 Coze 中创建或作为导入参考。",
+  "version": "1.0",
+  "nodes": [
+    {
+      "id": "node_story",
+      "name": "故事生成",
+      "type": "llm",
+      "description": "根据儿童档案与题目列表生成个性化故事正文",
+      "inputs": [
+        { "key": "child_profile", "type": "object", "description": "含 name, age, grade, interests" },
+        { "key": "questions", "type": "array", "description": "题目列表" },
+        { "key": "subject", "type": "string", "default": "数学" }
+      ],
+      "outputs": [
+        { "key": "story", "type": "string" },
+        { "key": "theme", "type": "string" },
+        { "key": "character_name", "type": "string" }
+      ],
+      "config": {
+        "min_chars": 300,
+        "max_chars": 500,
+        "panels_per_prompt": 3,
+        "panels_in_image": 6,
+        "panels_layout": "2x3",
+        "include_dialogue": true
+      },
+      "prompt_template": "你是一位儿童故事创作助手。请根据以下信息生成一个适合{{age}}岁儿童（{{grade}}）的短故事，将作业题目自然地融入故事情节。\n\n故事主题：{{theme}}\n主角姓名：{{character_name}}\n学科：{{subject}}\n题目内容摘要：\n{{questions_text}}\n\n配图说明：{{illustration_note}}\n\n要求：\n1. 将题目转化为故事中的任务或问题，不改变数学本质和难度。\n2. 语言生动有趣，用词简单，适合儿童阅读。\n3. 内容健康正面，无暴力、恐怖等不适合儿童的内容。\n4. 故事长度：{{min_chars}}-{{max_chars}}字。\n5. 结构分为四段：开头（引入角色）→ 发展（遇到题目/挑战）→ 高潮（思考与解决）→ 结尾（总结或收获）；每段尽量有清晰可画的场景，便于对应上述 {{panels_per_prompt}} 组插图。\n6. 在故事末尾可加一行【学习要点】列出本故事涉及的知识点（简短 bullet）。\n\n请直接输出故事正文，不要输出「故事：」等前缀。"
+    },
+    {
+      "id": "node_illustration_prompts",
+      "name": "插图提示生成",
+      "type": "llm",
+      "description": "根据故事正文生成多句插图描述（20-50字/句）",
+      "inputs": [
+        { "key": "story", "type": "string", "description": "故事正文" },
+        { "key": "theme", "type": "string" },
+        { "key": "character_name", "type": "string" },
+        { "key": "max_prompts", "type": "number", "default": 5 }
+      ],
+      "outputs": [
+        { "key": "illustration_prompts", "type": "array", "description": "中文插图描述列表" }
+      ],
+      "prompt_template": "你是一位儿童插画描述助手。根据以下故事片段，为每一段写一句插图描述（用于 AI 绘图或插画师参考）。\n\n要求：\n1. 风格：儿童漫画，色彩鲜艳，适合 3-12 岁。\n2. 主题：{{theme}}，主角名为 {{character_name}}。\n3. 每句描述 20-50 字，包含场景和角色动作。\n4. 直接输出多行，每行一句描述，不要编号和多余说明。\n\n故事片段：\n{{segments}}"
+    },
+    {
+      "id": "node_refine_prompt",
+      "name": "英文绘图提示词优化",
+      "type": "llm",
+      "description": "将单条中文插图描述改写成英文绘图 API 可用的提示词",
+      "inputs": [
+        { "key": "raw_prompt", "type": "string", "description": "中文插图描述" },
+        { "key": "style", "type": "string", "default": "children" },
+        { "key": "line_art", "type": "boolean", "default": false },
+        { "key": "panels_hint", "type": "string" },
+        { "key": "panels_in_image", "type": "number", "default": 6 },
+        { "key": "panels_layout", "type": "string", "default": "2x3" },
+        { "key": "include_dialogue", "type": "boolean", "default": true },
+        { "key": "character_interest", "type": "string", "default": "" },
+        { "key": "provider", "type": "string", "default": "gemini" }
+      ],
+      "outputs": [
+        { "key": "refined_prompt", "type": "string", "description": "英文绘图提示词" }
+      ],
+      "config": {
+        "style_desc_children": "children's illustration, cute, colorful, suitable for 3-12 years old",
+        "style_desc_anime": "anime style, Japanese animation, clean lines, vibrant colors",
+        "style_desc_cartoon": "cartoon style, Western cartoon, expressive characters",
+        "style_desc_line_art": "black and white line art only, no color, clean outline drawing"
+      },
+      "prompt_template": "你是一位 AI 绘图提示词助手。根据「图片生成需求配置」将下面的中文插图描述改写成一句英文 {{engine_label}} 可用的提示词。\n\n要求：\n1. 输出仅一句英文，不要编号、不要解释。\n2. 风格要求：{{style_desc}}\n3. 画面：{{panels_hint}}，适合儿童观看，无暴力恐怖。\n4. 保留场景与角色动作的核心含义，保证角色一致性与场景连贯性。\n{{reference_hint}}\n{{panels_instruction}}\n{{dialogue_instruction}}\n{{interest_instruction}}\n{{panel_instruction}}\n{{template_instruction}}\n\n中文描述：\n{{raw_prompt}}\n\n直接输出一句英文提示词："
+    },
+    {
+      "id": "node_draw_api",
+      "name": "调用绘图 API",
+      "type": "api",
+      "description": "TTAPI Gemini 或 Midjourney 生成图片",
+      "inputs": [
+        { "key": "prompt", "type": "string", "description": "英文绘图提示词" },
+        { "key": "provider", "type": "string", "default": "gemini" }
+      ],
+      "outputs": [
+        { "key": "image_url", "type": "string" },
+        { "key": "images", "type": "array" }
+      ],
+      "config": {
+        "gemini": {
+          "url": "https://api.ttapi.io/gemini/image/generate",
+          "method": "POST",
+          "headers": { "Content-Type": "application/json", "TT-API-KEY": "${TTAPI_API_KEY}" },
+          "body_keys": ["prompt", "mode", "aspect_ratio", "image_size", "google_search", "thinking_level", "refer_images"]
+        },
+        "gemini_mode": "gemini-3.1-flash-image-preview",
+        "gemini_aspect_ratio": "9:16",
+        "gemini_image_size": "1K",
+        "gemini_google_search": false,
+        "gemini_thinking_level": null,
+        "gemini_refer_images": []
+      },
+      "coze_ui_mapping": {
+        "说明": "在 Coze 画布中添加「HTTP 请求」或「自定义 API」节点后，config 各字段对应如下",
+        "请求 URL": "config.gemini.url → 填入节点的「URL」/「请求地址」",
+        "请求方法": "config.gemini.method → 选择 POST",
+        "请求头 Headers": "在节点的「请求头」/「Headers」中添加：Content-Type = application/json；TT-API-KEY = 在「工作流/知识库」的「环境变量」或「密钥」中配置 TTAPI_API_KEY，此处用变量引用（如 {{env.TTAPI_API_KEY}} 或 变量.TTAPI_API_KEY）",
+        "请求体 Body": "在节点的「请求体」/「Body」中选择 JSON，然后按 body_keys 添加键值：prompt（来自上游节点输出）、mode = gemini_mode、aspect_ratio = gemini_aspect_ratio、image_size = gemini_image_size、google_search = gemini_google_search、thinking_level = gemini_thinking_level、refer_images = gemini_refer_images。其中 prompt 填上游「英文绘图提示词优化」节点的输出，其余可填固定值或工作流变量。"
+      }
+    }
+  ],
+  "edges": [
+    { "from": "node_story", "to": "node_illustration_prompts", "from_output": "story", "to_input": "story" },
+    { "from": "node_story", "to": "node_illustration_prompts", "from_output": "theme", "to_input": "theme" },
+    { "from": "node_story", "to": "node_illustration_prompts", "from_output": "character_name", "to_input": "character_name" },
+    { "from": "node_illustration_prompts", "to": "node_refine_prompt", "from_output": "illustration_prompts", "to_input": "raw_prompt", "iterate": true },
+    { "from": "node_refine_prompt", "to": "node_draw_api", "from_output": "refined_prompt", "to_input": "prompt" }
+  ]
+}

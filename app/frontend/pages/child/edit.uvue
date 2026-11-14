@@ -1,0 +1,680 @@
+<template>
+  <view class="container">
+    <scroll-view scroll-y class="scroll-view">
+      <view class="form">
+        <!-- 基本信息 -->
+        <view class="section">
+          <text class="section-title">基本信息</text>
+          
+          <view class="input-group">
+            <text class="label">姓名 *</text>
+            <input v-model="form.name" placeholder="请输入姓名" maxlength="10" class="input" />
+          </view>
+
+          <view class="input-group">
+            <text class="label">昵称</text>
+            <input v-model="form.nickname" placeholder="请输入昵称" maxlength="10" class="input" />
+          </view>
+
+          <view class="input-group">
+            <text class="label">出生日期</text>
+            <picker mode="date" :value="form.birthDate" @change="onBirthDateChange">
+              <view class="picker-view">
+                {{ form.birthDate || '请选择出生日期' }}
+              </view>
+            </picker>
+          </view>
+
+          <view class="input-group">
+            <text class="label">年级 *</text>
+            <picker :value="gradeIndex" :range="grades" @change="onGradeChange">
+              <view class="picker-view">
+                {{ form.grade || '请选择年级' }}
+              </view>
+            </picker>
+          </view>
+
+          <view class="input-group">
+            <text class="label">性别</text>
+            <view class="radio-row">
+              <radio-group class="radio-group-horizontal" @change="onGenderChange">
+                <label class="radio-item" :class="{ active: form.gender === 1 }">
+                  <radio value="1" :checked="form.gender === 1" /> 男
+                </label>
+                <label class="radio-item" :class="{ active: form.gender === 2 }">
+                  <radio value="2" :checked="form.gender === 2" /> 女
+                </label>
+                <label class="radio-item" :class="{ active: form.gender === 0 }">
+                  <radio value="0" :checked="form.gender === 0" /> 不指定
+                </label>
+              </radio-group>
+            </view>
+          </view>
+        </view>
+
+        <!-- 兴趣爱好 -->
+        <view class="section">
+          <text class="section-title">兴趣爱好（最多选择5个）</text>
+          <view class="tags-container">
+            <view
+              v-for="tag in presetInterests"
+              :key="tag"
+              class="tag"
+              :class="{ active: form.interests?.includes(tag) }"
+              @click="toggleInterest(tag)"
+            >
+              {{ tag }}
+            </view>
+          </view>
+          
+          <view class="input-group" style="margin-top: 24rpx;">
+            <text class="label">自定义兴趣（最多3个，每个不超过5字）</text>
+            <view class="custom-tags">
+              <view
+                v-for="(tag, index) in form.customInterests || []"
+                :key="index"
+                class="custom-tag"
+              >
+                <text>{{ tag }}</text>
+                <text class="remove-tag" @click="removeCustomInterest(index)">×</text>
+              </view>
+              <input
+                v-if="(form.customInterests?.length || 0) < 3"
+                v-model="customTagInput"
+                placeholder="输入自定义标签"
+                maxlength="5"
+                class="custom-tag-input"
+                @confirm="addCustomInterest"
+              />
+            </view>
+          </view>
+        </view>
+
+        <!-- 学习特点 -->
+        <view class="section">
+          <text class="section-title">学习特点</text>
+          
+          <view class="input-group">
+            <text class="label">学习风格</text>
+            <picker :value="learningStyleIndex" :range="learningStyles" @change="onLearningStyleChange">
+              <view class="picker-view">
+                {{ form.learningStyle || '请选择学习风格' }}
+              </view>
+            </picker>
+          </view>
+
+          <view class="input-group">
+            <text class="label">专注力时长</text>
+            <picker :value="attentionSpanIndex" :range="attentionSpans" @change="onAttentionSpanChange">
+              <view class="picker-view">
+                {{ form.attentionSpan ? form.attentionSpan + '分钟' : '请选择专注力时长' }}
+              </view>
+            </picker>
+          </view>
+
+          <view class="input-group">
+            <text class="label">薄弱科目（可多选）</text>
+            <view class="tags-container">
+              <view
+                v-for="subject in subjects"
+                :key="subject"
+                class="tag"
+                :class="{ active: form.weakSubjects?.includes(subject) }"
+                @click="toggleWeakSubject(subject)"
+              >
+                {{ subject }}
+              </view>
+            </view>
+          </view>
+        </view>
+
+        <button class="submit-btn" :disabled="!canSubmit || saving" @click="handleSubmit" aria-label="保存档案">
+          {{ saving ? '保存中...' : '保存' }}
+        </button>
+
+        <button
+          v-if="mode === 'edit'"
+          class="delete-btn"
+          :disabled="saving"
+          @click="handleDelete"
+        >
+          删除
+        </button>
+      </view>
+    </scroll-view>
+  </view>
+</template>
+
+<script setup lang="uts">
+import { ref, computed } from 'vue'
+import { useUserStore } from '@/stores/user'
+import { createChild, updateChild, deleteChild, fetchChildren, fetchChildDetail } from '@/api/child'
+
+const userStore = useUserStore()
+
+// 预设兴趣标签
+const presetInterests = [
+  '奥特曼', '海底小纵队', '小猪佩奇', '超级飞侠', '汪汪队',
+  '机器人', '太空', '外星人', '未来世界',
+  '恐龙', '动物世界', '植物', '海洋生物',
+  '公主', '王子', '魔法', '城堡',
+  '足球', '篮球', '游泳', '跑步',
+  '医生', '警察', '消防员', '科学家',
+  '美食', '汽车', '积木', '音乐'
+]
+
+// 年级选项
+const grades = [
+  '幼儿园小班', '幼儿园中班', '幼儿园大班',
+  '一年级', '二年级', '三年级', '四年级', '五年级', '六年级'
+]
+
+// 学习风格
+const learningStyles = ['视觉型', '听觉型', '综合型', '动觉型']
+
+// 专注力时长
+const attentionSpans = [15, 20, 30, 45]
+
+// 科目
+const subjects = ['语文', '数学', '英语', '科学', '美术', '音乐']
+
+const form = ref({
+  name: '',
+  nickname: '',
+  birthDate: '',
+  grade: '',
+  gender: 0 as number,
+  interests: [] as string[],
+  customInterests: [] as string[],
+  learningStyle: '',
+  attentionSpan: 0 as number,
+  weakSubjects: [] as string[]
+})
+
+const mode = ref<'create' | 'edit'>('create')
+const childId = ref<number | null>(null)
+const saving = ref(false)
+const customTagInput = ref('')
+
+const gradeIndex = computed(() => {
+  const index = grades.findIndex(g => g === form.value.grade)
+  return index >= 0 ? index : 0
+})
+
+const learningStyleIndex = computed(() => {
+  const index = learningStyles.findIndex(s => s === form.value.learningStyle)
+  return index >= 0 ? index : 0
+})
+
+const attentionSpanIndex = computed(() => {
+  const index = attentionSpans.findIndex(a => a === form.value.attentionSpan)
+  return index >= 0 ? index : 0
+})
+
+const canSubmit = computed(() => {
+  return form.value.name.length >= 2 && 
+         form.value.name.length <= 10 && 
+         form.value.grade && 
+         (form.value.interests?.length || 0) + (form.value.customInterests?.length || 0) <= 5
+})
+
+// 页面加载时获取参数和初始化数据
+onLoad((options: any) => {
+  if (options.mode) {
+    mode.value = options.mode as 'create' | 'edit'
+  }
+  
+  uni.setNavigationBarTitle({
+    title: mode.value === 'edit' ? '编辑档案' : '添加档案'
+  })
+  
+  if (options.id) {
+    childId.value = parseInt(options.id)
+    loadChildData()
+  }
+})
+
+function onGenderChange(e: any) {
+  form.value.gender = parseInt(e.detail.value)
+}
+
+function onBirthDateChange(e: any) {
+  form.value.birthDate = e.detail.value
+}
+
+function onGradeChange(e: any) {
+  const index = parseInt(e.detail.value)
+  form.value.grade = grades[index]
+}
+
+function onLearningStyleChange(e: any) {
+  const index = parseInt(e.detail.value)
+  form.value.learningStyle = learningStyles[index]
+}
+
+function onAttentionSpanChange(e: any) {
+  const index = parseInt(e.detail.value)
+  form.value.attentionSpan = attentionSpans[index]
+}
+
+function toggleInterest(tag: string) {
+  if (!form.value.interests) {
+    form.value.interests = []
+  }
+  const index = form.value.interests.indexOf(tag)
+  const totalSelected = (form.value.interests?.length || 0) + (form.value.customInterests?.length || 0)
+  
+  if (index >= 0) {
+    form.value.interests.splice(index, 1)
+  } else {
+    if (totalSelected < 5) {
+      form.value.interests.push(tag)
+    } else {
+      uni.showToast({
+        title: '最多选择5个兴趣',
+        icon: 'none'
+      })
+    }
+  }
+}
+
+function addCustomInterest() {
+  const tag = customTagInput.value.trim()
+  if (!tag) return
+  
+  if (tag.length > 5) {
+    uni.showToast({
+      title: '自定义标签不超过5个字',
+      icon: 'none'
+    })
+    return
+  }
+  
+  if (!form.value.customInterests) {
+    form.value.customInterests = []
+  }
+  
+  const totalSelected = (form.value.interests?.length || 0) + form.value.customInterests.length
+  
+  if (totalSelected >= 5) {
+    uni.showToast({
+      title: '最多选择5个兴趣',
+      icon: 'none'
+    })
+    return
+  }
+  
+  if (form.value.customInterests.length >= 3) {
+    uni.showToast({
+      title: '最多3个自定义标签',
+      icon: 'none'
+    })
+    return
+  }
+  
+  if (form.value.customInterests.includes(tag)) {
+    uni.showToast({
+      title: '标签已存在',
+      icon: 'none'
+    })
+    return
+  }
+  
+  form.value.customInterests.push(tag)
+  customTagInput.value = ''
+}
+
+function removeCustomInterest(index: number) {
+  if (form.value.customInterests) {
+    form.value.customInterests.splice(index, 1)
+  }
+}
+
+function toggleWeakSubject(subject: string) {
+  if (!form.value.weakSubjects) {
+    form.value.weakSubjects = []
+  }
+  const index = form.value.weakSubjects.indexOf(subject)
+  if (index >= 0) {
+    form.value.weakSubjects.splice(index, 1)
+  } else {
+    form.value.weakSubjects.push(subject)
+  }
+}
+
+function normalizeChildToForm(child: any) {
+  const raw = child || {}
+  const interests = raw.interests || []
+  const presetSet = new Set(presetInterests)
+  const preset: string[] = []
+  const custom: string[] = []
+  for (const t of interests) {
+    if (presetSet.has(t)) {
+      preset.push(t)
+    } else if (t && typeof t === 'string') {
+      custom.push(t)
+    }
+  }
+  const customFromApi = raw.custom_interests || raw.customInterests || []
+  for (const t of customFromApi) {
+    if (t && !custom.includes(t)) custom.push(t)
+  }
+  return {
+    name: raw.name || '',
+    nickname: raw.nickname || '',
+    birthDate: raw.birth_date || raw.birthDate || '',
+    grade: raw.grade || '',
+    gender: raw.gender ?? 0,
+    interests: preset,
+    customInterests: custom,
+    learningStyle: raw.learning_style || raw.learningStyle || '',
+    attentionSpan: raw.attention_span ?? raw.attentionSpan ?? 20,
+    weakSubjects: raw.weak_subjects || raw.weakSubjects || []
+  }
+}
+
+async function loadChildData() {
+  if (!childId.value) return
+  
+  try {
+    const child = await fetchChildDetail(childId.value)
+    form.value = normalizeChildToForm(child)
+  } catch (err) {
+    console.error('加载儿童数据失败:', err)
+    try {
+      const children = await fetchChildren()
+      const c = children.find((x: any) => String(x.id) === String(childId.value))
+      if (c) form.value = normalizeChildToForm(c)
+    } catch (_) {
+      uni.showToast({ title: '加载失败', icon: 'none' })
+    }
+  }
+}
+
+async function handleSubmit() {
+  if (!canSubmit.value) {
+    if (!form.value.name) {
+      uni.showToast({
+        title: '请输入姓名',
+        icon: 'none'
+      })
+    } else if (!form.value.grade) {
+      uni.showToast({
+        title: '请选择年级',
+        icon: 'none'
+      })
+    } else if ((form.value.interests?.length || 0) + (form.value.customInterests?.length || 0) === 0) {
+      uni.showToast({
+        title: '请至少选择一个兴趣',
+        icon: 'none'
+      })
+    }
+    return
+  }
+
+  saving.value = true
+  try {
+    // 合并所有兴趣
+    const allInterests = [
+      ...(form.value.interests || []),
+      ...(form.value.customInterests || [])
+    ]
+    
+    const submitData = {
+      ...form.value,
+      interests: allInterests
+    }
+    
+    if (mode.value === 'create') {
+      const newChild = await createChild(submitData)
+      uni.showToast({
+        title: '创建成功',
+        icon: 'success'
+      })
+      // 设置为当前选中
+      if (newChild.id) {
+        userStore.setCurrentChild(newChild.id)
+      }
+    } else {
+      if (childId.value) {
+        await updateChild(childId.value, submitData)
+        uni.showToast({
+          title: '更新成功',
+          icon: 'success'
+        })
+      }
+    }
+    
+    // 刷新列表
+    const children = await fetchChildren()
+    userStore.setChildren(children)
+    
+    // 返回上一页
+    setTimeout(() => {
+      uni.navigateBack()
+    }, 1000)
+  } catch (err) {
+    console.error('保存失败:', err)
+    uni.showToast({
+      title: '保存失败，请重试',
+      icon: 'none'
+    })
+  } finally {
+    saving.value = false
+  }
+}
+
+async function handleDelete() {
+  if (!childId.value) return
+
+  uni.showModal({
+    title: '确认删除',
+    content: '确定要删除这个孩子档案吗？',
+    success: async (res) => {
+      if (res.confirm) {
+        try {
+          await deleteChild(childId.value!)
+          uni.showToast({
+            title: '删除成功',
+            icon: 'success'
+          })
+          
+          // 刷新列表
+          const children = await fetchChildren()
+          userStore.setChildren(children)
+          
+          // 返回上一页
+          setTimeout(() => {
+            uni.navigateBack()
+          }, 1000)
+        } catch (err) {
+          console.error('删除失败:', err)
+          uni.showToast({
+            title: '删除失败，请重试',
+            icon: 'none'
+          })
+        }
+      }
+    }
+  })
+}
+</script>
+
+<style scoped lang="scss">
+.container {
+  height: 100vh;
+  background: #f5f5f5;
+}
+
+.scroll-view {
+  height: 100%;
+}
+
+.form {
+  padding: 32rpx;
+}
+
+.section {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 40rpx;
+  margin-bottom: 24rpx;
+}
+
+.section-title {
+  display: block;
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 32rpx;
+  padding-bottom: 20rpx;
+  border-bottom: 2rpx solid #f0f0f0;
+}
+
+.input-group {
+  margin-bottom: 40rpx;
+}
+
+.label {
+  display: block;
+  font-size: 28rpx;
+  color: #333;
+  margin-bottom: 20rpx;
+}
+
+.input {
+  width: 100%;
+  height: 88rpx;
+  padding: 0 24rpx;
+  border: 2rpx solid #e5e5e5;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+}
+
+.picker-view {
+  width: 100%;
+  height: 88rpx;
+  padding: 0 24rpx;
+  border: 2rpx solid #e5e5e5;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: #333;
+  box-sizing: border-box;
+}
+
+.radio-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.radio-group-horizontal {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 32rpx;
+}
+
+.radio-item {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  font-size: 28rpx;
+  color: #666;
+}
+
+.radio-item.active {
+  color: #333;
+  font-weight: 500;
+}
+
+.tags-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.tag {
+  padding: 16rpx 32rpx;
+  background: #f5f5f5;
+  border: 2rpx solid #e5e5e5;
+  border-radius: 24rpx;
+  font-size: 26rpx;
+  color: #666;
+  transition: all 0.3s;
+}
+
+.tag.active {
+  background: #667eea;
+  border-color: #667eea;
+  color: #fff;
+}
+
+.custom-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  align-items: center;
+}
+
+.custom-tag {
+  display: flex;
+  align-items: center;
+  padding: 16rpx 24rpx;
+  background: #e8f4fd;
+  border: 2rpx solid #667eea;
+  border-radius: 24rpx;
+  font-size: 26rpx;
+  color: #667eea;
+  gap: 12rpx;
+}
+
+.remove-tag {
+  font-size: 32rpx;
+  color: #667eea;
+  font-weight: bold;
+  line-height: 1;
+}
+
+.custom-tag-input {
+  flex: 1;
+  min-width: 200rpx;
+  height: 64rpx;
+  padding: 0 20rpx;
+  border: 2rpx solid #e5e5e5;
+  border-radius: 12rpx;
+  font-size: 26rpx;
+}
+
+.submit-btn {
+  width: 100%;
+  height: 88rpx;
+  background: #667eea;
+  color: #fff;
+  border-radius: 12rpx;
+  font-size: 32rpx;
+  margin-top: 40rpx;
+  border: none;
+}
+
+.submit-btn[disabled] {
+  background: #ccc;
+}
+
+.delete-btn {
+  width: 100%;
+  height: 88rpx;
+  background: #ff4757;
+  color: #fff;
+  border-radius: 12rpx;
+  font-size: 32rpx;
+  margin-top: 24rpx;
+  border: none;
+}
+</style>

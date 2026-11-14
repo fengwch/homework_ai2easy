@@ -1,0 +1,259 @@
+<template>
+  <view class="page">
+    <view class="card">
+      <text class="label">粘贴老师发的作业</text>
+      <textarea
+        v-model="rawText"
+        class="paste-box"
+        placeholder="把作业通知整段粘贴到这里"
+      />
+      <view class="row">
+        <input v-model="studentName" class="field" placeholder="孩子姓名" />
+        <input v-model="dateText" class="field" placeholder="日期 YYYY-MM-DD" />
+      </view>
+      <button class="btn primary" :disabled="working" @click="onParse">
+        {{ working ? '解析中...' : '解析作业' }}
+      </button>
+      <button class="btn ghost" :disabled="working" @click="onChooseImage">上传图片识别</button>
+
+      <view class="smart-row" @click="smart = !smart">
+        <view class="checkbox" :class="{ on: smart }">
+          <text v-if="smart" class="check">✓</text>
+        </view>
+        <view class="smart-text">
+          <text class="smart-title">智能解析（推荐）</text>
+          <text class="smart-desc">{{ smart ? '用大模型过滤空白/日期/单个字等噪声，条目更干净' : '离线快速解析，不会计费，但可能多出噪声条目' }}</text>
+        </view>
+      </view>
+    </view>
+
+    <view v-if="ocrText" class="card">
+      <text class="label">识别到的文字（请核对）</text>
+      <text class="ocr-text">{{ ocrText }}</text>
+    </view>
+
+    <text v-if="errorText" class="error">{{ errorText }}</text>
+  </view>
+</template>
+
+<script setup lang="uts">
+import { ref } from 'vue'
+import { compassParse, compassParseImage } from '@/api/compass'
+import { useCompassStore } from '@/stores/compass'
+import { useUserStore } from '@/stores/user'
+
+const store = useCompassStore()
+const userStore = useUserStore()
+const rawText = ref('')
+const studentName = ref('')
+const dateText = ref('')
+const working = ref(false)
+const errorText = ref('')
+const ocrText = ref('')
+// 默认智能解析：噪声条目是本产品最大的体验问题，值得默认多花一次模型调用
+const smart = ref(true)
+
+onLoad((query: any) => {
+  const childId = String(query?.childId || userStore.currentChildId.value || '')
+  // URL 没带姓名时，从孩子列表按 id 查——直接进入本页也能自动填好
+  const childName = String(query?.childName || findChildName(childId))
+  store.setChild(childId, childName)
+  studentName.value = childName
+  const now = new Date()
+  dateText.value = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
+})
+
+// 直接刷新本页时孩子列表可能还没加载好，onShow 再兜一次（仅在姓名为空时）
+onShow(() => {
+  if (studentName.value) return
+  const name = findChildName(store.state.childId) || findChildName(String(userStore.currentChildId.value || ''))
+  if (name) {
+    studentName.value = name
+    if (!store.state.childName) store.setChild(store.state.childId, name)
+  }
+})
+
+function findChildName(childId: string): string {
+  if (!childId) return ''
+  const c = userStore.children.value.find(x => String(x.id) === childId)
+  return c?.name || ''
+}
+
+function pad(n: number): string {
+  return n < 10 ? '0' + n : String(n)
+}
+
+function looksEmpty(text: string): boolean {
+  // 「没有识别到作业内容」的判定：去掉空白、标点、emoji 后无实际文字
+  return text.replace(/[\s\p{P}\p{S}]/gu, '').length === 0
+}
+
+async function onParse() {
+  if (looksEmpty(rawText.value)) {
+    errorText.value = '没有识别到作业内容，请粘贴老师的原文或上传截图'
+    return
+  }
+  await run(async () => {
+    store.setHomework(await compassParse(rawText.value, studentName.value, dateText.value, smart.value))
+    uni.navigateTo({ url: '/pages/compass/confirm' })
+  })
+}
+
+function onChooseImage() {
+  uni.chooseImage({
+    count: 1,
+    success(res) {
+      const files = res.tempFilePaths as string[]
+      if (!files || files.length === 0) return
+      run(async () => {
+        const hw = await compassParseImage(files[0], studentName.value, dateText.value, smart.value)
+        ocrText.value = hw.ocr_text || ''
+        store.setHomework(hw)
+        uni.navigateTo({ url: '/pages/compass/confirm' })
+      })
+    }
+  })
+}
+
+async function run(task: () => Promise<void>) {
+  working.value = true
+  errorText.value = ''
+  try {
+    await task()
+  } catch (err: any) {
+    errorText.value = err?.message || '请求失败'
+  } finally {
+    working.value = false
+  }
+}
+</script>
+
+<style scoped lang="scss">
+.page {
+  min-height: 100vh;
+  padding: 32rpx;
+  background: #f5f5f5;
+}
+
+.card {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 32rpx;
+  margin-bottom: 24rpx;
+}
+
+.label {
+  display: block;
+  font-size: 28rpx;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 16rpx;
+}
+
+.paste-box {
+  width: 100%;
+  height: 360rpx;
+  font-size: 28rpx;
+  margin-bottom: 24rpx;
+}
+
+.row {
+  display: flex;
+  flex-direction: row;
+  gap: 16rpx;
+  margin-bottom: 24rpx;
+}
+
+.field {
+  flex: 1;
+  height: 88rpx;
+  padding: 0 20rpx;
+  font-size: 28rpx;
+  background: #f5f5f5;
+  border-radius: 12rpx;
+}
+
+.btn {
+  width: 100%;
+  height: 88rpx;
+  line-height: 88rpx;
+  border-radius: 12rpx;
+  font-size: 30rpx;
+  border: none;
+  margin-top: 16rpx;
+}
+
+.btn.primary {
+  color: #fff;
+  background: #667eea;
+}
+
+.btn.ghost {
+  color: #667eea;
+  background: #f4f5ff;
+}
+
+.smart-row {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 16rpx;
+  margin-top: 24rpx;
+  padding: 20rpx;
+  background: #f7f8ff;
+  border-radius: 12rpx;
+}
+
+.checkbox {
+  width: 40rpx;
+  height: 40rpx;
+  border: 2rpx solid #bbb;
+  border-radius: 8rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2rpx;
+}
+
+.checkbox.on {
+  background: #667eea;
+  border-color: #667eea;
+}
+
+.check {
+  font-size: 26rpx;
+  color: #fff;
+}
+
+.smart-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
+
+.smart-title {
+  font-size: 28rpx;
+  color: #333;
+}
+
+.smart-desc {
+  font-size: 24rpx;
+  color: #666;
+  line-height: 1.5;
+}
+
+.ocr-text {
+  font-size: 26rpx;
+  color: #333;
+  line-height: 1.6;
+}
+
+.error {
+  display: block;
+  font-size: 26rpx;
+  color: #c0392b;
+  white-space: pre-line;
+}
+</style>

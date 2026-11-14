@@ -1,0 +1,530 @@
+syntax = "proto3";
+
+package api.assignment.v1;
+
+import "google/api/annotations.proto";
+
+option go_package = "homework_ai2easy/backend/api/assignment/v1;v1";
+
+// 作业服务
+service AssignmentService {
+  // 上传作业图片
+  rpc UploadImage (UploadImageRequest) returns (UploadImageReply) {
+    option (google.api.http) = {
+      post: "/api/v1/assignments/upload"
+      body: "*"
+    };
+  }
+
+  // 扫描识别作业
+  rpc Scan (ScanRequest) returns (ScanReply) {
+    option (google.api.http) = {
+      post: "/api/v1/assignments/scan"
+      body: "*"
+    };
+  }
+
+  // 按作业ID触发扫描识别（上传后可调用）
+  rpc TriggerScan (TriggerScanRequest) returns (ScanReply) {
+    option (google.api.http) = {
+      post: "/api/v1/assignments/{id}/scan"
+      body: "*"
+    };
+  }
+
+  // 获取识别进度
+  rpc GetScanStatus (GetScanStatusRequest) returns (GetScanStatusReply) {
+    option (google.api.http) = {
+      get: "/api/v1/assignments/{id}/scan-status"
+    };
+  }
+
+  // 获取作业详情
+  rpc GetAssignment (GetAssignmentRequest) returns (GetAssignmentReply) {
+    option (google.api.http) = {
+      get: "/api/v1/assignments/{id}"
+    };
+  }
+
+  // 编辑识别结果
+  rpc UpdateQuestion (UpdateQuestionRequest) returns (UpdateQuestionReply) {
+    option (google.api.http) = {
+      put: "/api/v1/assignments/{id}/questions/{question_id}"
+      body: "*"
+    };
+  }
+
+  // 题目分割确认
+  rpc SplitQuestions (SplitQuestionsRequest) returns (SplitQuestionsReply) {
+    option (google.api.http) = {
+      post: "/api/v1/assignments/{id}/split-questions"
+      body: "*"
+    };
+  }
+
+  // 题目类型标注
+  rpc UpdateQuestionType (UpdateQuestionTypeRequest) returns (UpdateQuestionTypeReply) {
+    option (google.api.http) = {
+      put: "/api/v1/assignments/{id}/questions/{question_id}/type"
+      body: "*"
+    };
+  }
+
+  // 知识点匹配
+  rpc GetKnowledgePoints (GetKnowledgePointsRequest) returns (GetKnowledgePointsReply) {
+    option (google.api.http) = {
+      get: "/api/v1/assignments/{id}/questions/{question_id}/knowledge-points"
+    };
+  }
+
+  // 更新知识点
+  rpc UpdateKnowledgePoints (UpdateKnowledgePointsRequest) returns (UpdateKnowledgePointsReply) {
+    option (google.api.http) = {
+      put: "/api/v1/assignments/{id}/questions/{question_id}/knowledge-points"
+      body: "*"
+    };
+  }
+
+  // 更新作业信息
+  rpc UpdateAssignment (UpdateAssignmentRequest) returns (UpdateAssignmentReply) {
+    option (google.api.http) = {
+      put: "/api/v1/assignments/{id}"
+      body: "*"
+    };
+  }
+
+  // 删除题目
+  rpc DeleteQuestion (DeleteQuestionRequest) returns (DeleteQuestionReply) {
+    option (google.api.http) = {
+      delete: "/api/v1/assignments/{id}/questions/{question_id}"
+    };
+  }
+
+  // 生成个性化内容
+  rpc GenerateContent (GenerateContentRequest) returns (GenerateContentReply) {
+    option (google.api.http) = {
+      post: "/api/v1/assignments/{assignment_id}/generate"
+      body: "*"
+    };
+  }
+
+  // 查询内容生成状态
+  rpc GetGenerateStatus (GetGenerateStatusRequest) returns (GetGenerateStatusReply) {
+    option (google.api.http) = {
+      get: "/api/v1/assignments/{assignment_id}/generate-status"
+    };
+  }
+
+  // 单题生成个性化内容（2.4.3）
+  rpc GenerateQuestionContent (GenerateQuestionContentRequest) returns (GenerateContentReply) {
+    option (google.api.http) = {
+      post: "/api/v1/assignments/{assignment_id}/questions/{question_id}/generate"
+      body: "*"
+    };
+  }
+
+  // 单题内容生成状态
+  rpc GetQuestionContentGenerateStatus (GetQuestionContentGenerateStatusRequest) returns (GetGenerateStatusReply) {
+    option (google.api.http) = {
+      get: "/api/v1/assignments/{assignment_id}/questions/{question_id}/generate-status"
+    };
+  }
+
+  // 获取作业列表
+  rpc ListAssignments (ListAssignmentsRequest) returns (ListAssignmentsReply) {
+    option (google.api.http) = {
+      get: "/api/v1/assignments"
+    };
+  }
+
+  // 获取作业答题记录（批改页）
+  rpc GetAssignmentAnswers (GetAssignmentAnswersRequest) returns (GetAssignmentAnswersReply) {
+    option (google.api.http) = {
+      get: "/api/v1/assignments/{id}/answers"
+    };
+  }
+}
+
+// 上传图片请求
+message UploadImageRequest {
+  int64 child_id = 1;
+  bytes file = 2;
+}
+
+// 上传图片响应
+message UploadImageReply {
+  int32 code = 1;
+  string message = 2;
+  UploadImageData data = 3;
+}
+
+message UploadImageData {
+  int64 id = 1;
+}
+
+// 扫描请求
+message ScanRequest {
+  string image_data = 1;  // base64编码的图片数据或图片URL
+  int64 child_id = 2;
+  string subject = 3;
+}
+
+// 扫描响应
+message ScanReply {
+  int32 code = 1;
+  string message = 2;
+  ScanData data = 3;
+}
+
+message ScanData {
+  int64 assignment_id = 1;
+  string status = 2;  // processing/complete/error
+  int32 progress = 3;
+  int32 estimated_time = 4;  // 预计时间（秒）
+}
+
+// 按作业ID触发扫描请求
+message TriggerScanRequest {
+  int64 id = 1;       // 作业ID，路径参数
+  string subject = 2; // 可选，如"数学"
+}
+
+// 获取识别进度请求
+message GetScanStatusRequest {
+  int64 id = 1;
+}
+
+// 获取识别进度响应
+message GetScanStatusReply {
+  int32 code = 1;
+  string message = 2;
+  ScanStatusData data = 3;
+}
+
+message ScanStatusData {
+  int64 assignment_id = 1;
+  string status = 2;
+  int32 progress = 3;
+  int32 estimated_time = 4;
+  repeated QuestionData questions = 5;
+}
+
+// 获取作业详情请求
+message GetAssignmentRequest {
+  int64 id = 1;
+}
+
+// 获取作业详情响应
+message GetAssignmentReply {
+  int32 code = 1;
+  string message = 2;
+  AssignmentData data = 3;
+}
+
+// 更新题目请求
+message UpdateQuestionRequest {
+  int64 id = 1;
+  string question_id = 2;
+  string original_text = 3;
+  StructuredData structured_data = 4;
+  string question_type = 5;
+}
+
+// 更新题目响应
+message UpdateQuestionReply {
+  int32 code = 1;
+  string message = 2;
+  QuestionData data = 3;
+}
+
+// 题目分割请求
+message SplitQuestionsRequest {
+  int64 id = 1;
+  repeated QuestionSplitData questions = 2;
+}
+
+message QuestionSplitData {
+  string id = 1;
+  int32 question_number = 2;
+  int32 start_index = 3;
+  int32 end_index = 4;
+}
+
+// 题目分割响应
+message SplitQuestionsReply {
+  int32 code = 1;
+  string message = 2;
+  SplitQuestionsData data = 3;
+}
+
+message SplitQuestionsData {
+  repeated QuestionData questions = 1;
+}
+
+// 更新题目类型请求
+message UpdateQuestionTypeRequest {
+  int64 id = 1;
+  string question_id = 2;
+  string question_type = 3;
+}
+
+// 更新题目类型响应
+message UpdateQuestionTypeReply {
+  int32 code = 1;
+  string message = 2;
+  UpdateQuestionTypeData data = 3;
+}
+
+message UpdateQuestionTypeData {
+  string id = 1;
+  string question_type = 2;
+  string updated_at = 3;
+}
+
+// 获取知识点请求
+message GetKnowledgePointsRequest {
+  int64 id = 1;
+  string question_id = 2;
+}
+
+// 获取知识点响应
+message GetKnowledgePointsReply {
+  int32 code = 1;
+  string message = 2;
+  KnowledgePointsData data = 3;
+}
+
+message KnowledgePointsData {
+  repeated KnowledgePoint knowledge_points = 1;
+}
+
+// 更新知识点请求
+message UpdateKnowledgePointsRequest {
+  int64 id = 1;
+  string question_id = 2;
+  repeated KnowledgePoint knowledge_points = 3;
+}
+
+// 更新知识点响应
+message UpdateKnowledgePointsReply {
+  int32 code = 1;
+  string message = 2;
+  KnowledgePointsData data = 3;
+}
+
+// 更新作业信息请求
+message UpdateAssignmentRequest {
+  int64 id = 1;
+  string subject = 2;
+  string urgency = 3;  // low/medium/high
+  string notes = 4;
+  repeated QuestionData questions = 5;
+  string status = 6;
+}
+
+// 更新作业信息响应
+message UpdateAssignmentReply {
+  int32 code = 1;
+  string message = 2;
+  AssignmentData data = 3;
+}
+
+// 删除题目请求
+message DeleteQuestionRequest {
+  int64 id = 1;
+  string question_id = 2;
+}
+
+// 删除题目响应
+message DeleteQuestionReply {
+  int32 code = 1;
+  string message = 2;
+}
+
+// 生成内容请求
+message GenerateContentRequest {
+  int64 assignment_id = 1;
+}
+
+// 生成内容响应
+message GenerateContentReply {
+  int32 code = 1;
+  string message = 2;
+  GenerateContentData data = 3;
+}
+
+message GenerateContentData {
+  string content_id = 1;
+  string status = 2;  // processing/completed/failed
+}
+
+// 获取生成状态请求
+message GetGenerateStatusRequest {
+  int64 assignment_id = 1;
+}
+
+// 单题生成内容请求
+message GenerateQuestionContentRequest {
+  int64 assignment_id = 1;
+  string question_id = 2;
+}
+
+// 单题生成状态请求
+message GetQuestionContentGenerateStatusRequest {
+  int64 assignment_id = 1;
+  string question_id = 2;
+}
+
+// 获取生成状态响应
+message GetGenerateStatusReply {
+  int32 code = 1;
+  string message = 2;
+  GenerateStatusData data = 3;
+}
+
+message GenerateStatusData {
+  string content_id = 1;
+  string status = 2;
+  int32 progress = 3;
+  int32 estimated_time = 4;
+  string story_id = 5;
+  // 图片/插图生成状态与结果（见文档 14. 获取作业列表、内容生成状态说明）
+  string image_status = 6;   // none/pending/processing/completed/failed
+  int32 image_progress = 7;  // 可选，0-100
+  repeated string image_urls = 8; // 图片生成完成后返回的插图 URL 数组
+}
+
+// 获取作业列表请求
+message ListAssignmentsRequest {
+  int64 child_id = 1;
+  string status = 2;  // pending/processing/completed/failed
+  string subject = 3;
+  int32 page = 4;
+  int32 page_size = 5;
+  optional bool has_answers = 6;  // true=已作答，false=未作答，不传=不过滤
+}
+
+// 获取作业列表响应
+message ListAssignmentsReply {
+  int32 code = 1;
+  string message = 2;
+  ListAssignmentsData data = 3;
+}
+
+message ListAssignmentsData {
+  repeated AssignmentListItem list = 1;
+  int64 total = 2;
+  int32 page = 3;
+  int32 page_size = 4;
+}
+
+message AssignmentListItem {
+  int64 id = 1;
+  int64 child_id = 2;
+  string subject = 3;
+  string title = 4;        // 作业标题，建议为基于识别结果自动生成的 10 个字左右「作业摘要」（如「分数加减练习」），用于作业列表简短展示
+  string status = 5;
+  string created_at = 6;
+  bool has_answers = 7;       // 是否已作答
+  optional float score = 8;   // 得分（有标准答案且已作答时返回，无则 null）
+}
+
+// 获取作业答题记录请求
+message GetAssignmentAnswersRequest {
+  int64 id = 1;  // 作业ID（路径参数）
+}
+
+// 获取作业答题记录响应
+message GetAssignmentAnswersReply {
+  int32 code = 1;
+  string message = 2;
+  AssignmentAnswersData data = 3;
+}
+
+message AssignmentAnswersData {
+  int64 assignment_id = 1;
+  repeated AnswerQuestionItem questions = 2;
+  optional float score = 3;       // 无标准答案题目时可 null
+  int32 total_questions = 4;
+  int32 correct_count = 5;        // 仅统计有标准答案的题
+  int32 wrong_count = 6;          // 仅统计有标准答案的题
+  int32 correct_rate = 7;         // 0-100，仅统计有标准答案的题
+}
+
+message AnswerQuestionItem {
+  string question_id = 1;
+  string question_text = 2;
+  string user_answer = 3;
+  string correct_answer = 4;      // 无标准答案时为空
+  optional bool is_correct = 5;   // 无标准答案时为 null
+  string analysis = 6;            // 解析，无则空
+  bool has_standard_answer = 7;
+}
+
+// 作业数据
+message AssignmentData {
+  int64 id = 1;
+  int64 child_id = 2;
+  string subject = 3;
+  string grade = 4;
+  repeated string original_images = 5;
+  repeated QuestionData questions = 6;
+  GeneratedContent generated_content = 7;
+  string status = 8;
+  int32 estimated_time = 9;
+  int32 actual_time = 10;
+  float score = 11;
+  string completed_at = 12;
+  string created_at = 13;
+  string updated_at = 14;
+}
+
+// 题目数据
+message QuestionData {
+  string id = 1;
+  int32 question_number = 2;
+  string question_type = 3;  // multiple_choice/fill_blank/calculation/word_problem/essay
+  string original_text = 4;
+  StructuredData structured_data = 5;
+  repeated KnowledgePoint knowledge_points = 6;
+  QuestionMetadata metadata = 7;
+  string updated_at = 8;
+  GeneratedContent generated_content = 9;  // 题目维度个性化内容生成状态：status(none/pending/processing/completed/failed)，完成时 story_id 必填
+}
+
+// 结构化数据
+message StructuredData {
+  string stem = 1;  // 题干
+  repeated Option options = 2;  // 选项（选择题）
+  string answer = 3;  // 答案
+  string analysis = 4;  // 解析
+}
+
+message Option {
+  string option = 1;  // A/B/C/D
+  string text = 2;
+}
+
+// 知识点
+message KnowledgePoint {
+  string subject = 1;
+  string topic = 2;
+  string subtopic = 3;
+  string difficulty = 4;  // easy/medium/hard
+  float confidence = 5;
+  string description = 6;
+}
+
+// 题目元数据
+message QuestionMetadata {
+  int32 word_count = 1;
+  bool has_image = 2;
+  bool has_formula = 3;
+  float confidence = 4;
+}
+
+// 生成的内容
+message GeneratedContent {
+  string story_id = 1;
+  string status = 2;  // pending/processing/completed/failed
+}

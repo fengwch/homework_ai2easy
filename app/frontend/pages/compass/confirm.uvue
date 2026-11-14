@@ -1,0 +1,384 @@
+<template>
+  <view class="page">
+    <view v-if="pendingList.length > 0" class="card pending-card">
+      <text class="pending-title">有 {{ pendingList.length }} 处需要你确认</text>
+      <view v-for="p in pendingList" :key="p.id" class="pending-row">
+        <text class="pending-text">{{ p.text }}</text>
+        <view class="pending-actions">
+          <button class="mini" @click="adoptPending(p)">补进第 {{ p.related_seq || 1 }} 项</button>
+          <button class="mini ghost" @click="ignorePending(p.id)">忽略</button>
+        </view>
+      </view>
+    </view>
+
+    <view v-for="item in items" :key="item.seq" class="card item-card">
+      <view class="item-head">
+        <text class="item-seq">{{ item.seq }}</text>
+        <text class="item-subject">{{ item.subject || '未分类' }}</text>
+        <text v-if="item.priority === 'high'" class="badge">重要</text>
+        <view class="drop-wrap" @click.stop="dropItem(item)">
+          <text class="drop-text">删除此项</text>
+        </view>
+      </view>
+
+      <view class="field-row">
+        <text class="field-label">科目</text>
+        <input class="field-input" :value="item.subject" @blur="(e:any) => onEdit(item, 'subject', e)" />
+      </view>
+      <view class="field-row">
+        <text class="field-label">内容</text>
+        <input class="field-input" :value="item.task" @blur="(e:any) => onEdit(item, 'task', e)" />
+      </view>
+      <view class="field-row">
+        <text class="field-label">数量</text>
+        <input class="field-input" :value="item.quantity" @blur="(e:any) => onEdit(item, 'quantity', e)" />
+      </view>
+      <view class="field-row">
+        <text class="field-label">要求</text>
+        <input
+          class="field-input"
+          :value="item.requirements.join('、')"
+          placeholder="用逗号分隔"
+          @blur="(e:any) => onEdit(item, 'requirements', e)"
+        />
+      </view>
+      <view class="field-row">
+        <text class="field-label">优先级</text>
+        <picker
+          :range="priorityNames"
+          :value="item.priority === 'high' ? 1 : 0"
+          @change="(e:any) => onPriority(item, e)"
+        >
+          <view class="field-picker">{{ item.priority === 'high' ? '重要' : '普通' }}</view>
+        </picker>
+      </view>
+
+      <text v-if="extraUsed(item)" class="extra-text">要求：{{ extraUsed(item) }}</text>
+    </view>
+
+    <view class="card reward-card">
+      <text class="label">通关奖励（可选）</text>
+      <input v-model="reward" class="reward-input" placeholder="留空则不显示奖励区" @blur="saveReward" />
+      <text class="reward-hint">填了才在目标图右下角显示「通关奖励：xxx」</text>
+    </view>
+
+    <text v-if="errorText" class="error">{{ errorText }}</text>
+
+    <view class="footer">
+      <button class="btn primary" :disabled="working || pendingList.length > 0" @click="onNext">
+        {{ pendingList.length > 0 ? '请先处理上方待确认项' : '下一步：生成目标图' }}
+      </button>
+    </view>
+  </view>
+</template>
+
+<script setup lang="uts">
+import { ref } from 'vue'
+import { compassCorrect, compassDismiss, compassDropItem, compassPatch } from '@/api/compass'
+import type { CompassItem, CompassPending } from '@/api/compass'
+import { useCompassStore } from '@/stores/compass'
+
+const store = useCompassStore()
+const items = ref<CompassItem[]>([])
+const pendingList = ref<CompassPending[]>([])
+const working = ref(false)
+const errorText = ref('')
+const priorityNames = ['普通', '重要']
+const reward = ref('')
+
+onShow(() => {
+  apply()
+})
+
+function apply() {
+  const hw = store.state.hw
+  if (!hw) {
+    uni.redirectTo({ url: '/pages/compass/input' })
+    return
+  }
+  items.value = hw.items
+  pendingList.value = hw.pending
+  if (!reward.value) reward.value = hw.reward || ''
+}
+
+function extraUsed(item: CompassItem): string {
+  return (item.requirements || []).join('、')
+}
+
+async function onEdit(item: CompassItem, field: string, e: any) {
+  const value = String(e?.detail?.value ?? '')
+  if (value === (item as any)[field]) return
+  await run(async () => {
+    store.setHomework(await compassCorrect(store.state.hw!, item.seq, field, value))
+    apply()
+  })
+}
+
+async function onPriority(item: CompassItem, e: any) {
+  const value = Number(e?.detail?.value) === 1 ? 'high' : 'normal'
+  await run(async () => {
+    store.setHomework(await compassCorrect(store.state.hw!, item.seq, 'priority', value))
+    apply()
+  })
+}
+
+async function dropItem(item: CompassItem) {
+  await run(async () => {
+    store.setHomework(await compassDropItem(store.state.hw!, item.seq))
+    apply()
+  })
+}
+
+async function adoptPending(p: CompassPending) {
+  const seq = p.related_seq || 1
+  const target = items.value.find((i) => i.seq === seq)
+  const merged = `${target?.task || ''} ${p.text}`.trim()
+  await run(async () => {
+    store.setHomework(await compassCorrect(store.state.hw!, seq, 'task', merged))
+    apply()
+  })
+}
+
+async function ignorePending(id: string) {
+  await run(async () => {
+    store.setHomework(await compassDismiss(store.state.hw!, id))
+    apply()
+  })
+}
+
+async function saveReward() {
+  const hw = store.state.hw
+  if (!hw || reward.value === (hw.reward || '')) return
+  try {
+    store.setHomework(await compassPatch(hw, { reward: reward.value }))
+  } catch (err: any) {
+    errorText.value = err?.message || '保存奖励失败'
+  }
+}
+
+async function onNext() {
+  await saveReward()
+  if (pendingList.value.length > 0) {
+    errorText.value = '还有待确认项没处理完，处理完才能生成'
+    return
+  }
+  uni.navigateTo({ url: '/pages/compass/candidates' })
+}
+
+async function run(task: () => Promise<void>) {
+  working.value = true
+  errorText.value = ''
+  try {
+    await task()
+  } catch (err: any) {
+    errorText.value = err?.message || '请求失败'
+  } finally {
+    working.value = false
+  }
+}
+</script>
+
+<style scoped lang="scss">
+.page {
+  min-height: 100vh;
+  padding: 32rpx;
+  padding-bottom: 200rpx;
+  background: #f5f5f5;
+}
+
+.card {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 28rpx;
+  margin-bottom: 24rpx;
+}
+
+/* 歧义项：红色高亮置顶，处理完才放行 */
+.pending-card {
+  background: #fff5f5;
+  border: 2rpx solid #f1b0b7;
+}
+
+.pending-title {
+  display: block;
+  font-size: 28rpx;
+  font-weight: bold;
+  color: #a61b29;
+  margin-bottom: 16rpx;
+}
+
+.pending-row {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+  padding: 16rpx 0;
+  border-top: 2rpx solid #f8d7da;
+}
+
+.pending-text {
+  font-size: 28rpx;
+  color: #a61b29;
+}
+
+.pending-actions {
+  display: flex;
+  flex-direction: row;
+  gap: 16rpx;
+}
+
+.mini {
+  height: 64rpx;
+  line-height: 64rpx;
+  padding: 0 24rpx;
+  font-size: 24rpx;
+  color: #fff;
+  background: #c0392b;
+  border-radius: 8rpx;
+  border: none;
+}
+
+.mini.ghost {
+  color: #666;
+  background: #eee;
+}
+
+.reward-card {
+  margin-top: -4rpx;
+}
+
+.label {
+  display: block;
+  font-size: 28rpx;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 16rpx;
+}
+
+.reward-input {
+  height: 80rpx;
+  padding: 0 20rpx;
+  font-size: 28rpx;
+  background: #f5f5f5;
+  border-radius: 12rpx;
+}
+
+.reward-hint {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  color: #666;
+}
+
+.item-head {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 16rpx;
+  margin-bottom: 16rpx;
+}
+
+.item-seq {
+  width: 44rpx;
+  height: 44rpx;
+  line-height: 44rpx;
+  text-align: center;
+  border-radius: 22rpx;
+  background: #667eea;
+  color: #fff;
+  font-size: 24rpx;
+}
+
+.item-subject {
+  font-size: 30rpx;
+  font-weight: bold;
+  color: #333;
+}
+
+.drop-wrap {
+  margin-left: auto;
+  padding: 8rpx 0 8rpx 24rpx;
+}
+
+.drop-text {
+  font-size: 24rpx;
+  color: #a61b29;
+}
+
+.badge {
+  padding: 4rpx 16rpx;
+  border-radius: 16rpx;
+  font-size: 22rpx;
+  color: #a61b29;
+  background: #fde2e2;
+}
+
+.field-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 16rpx;
+  padding: 8rpx 0;
+}
+
+.field-label {
+  width: 96rpx;
+  font-size: 26rpx;
+  color: #666;
+}
+
+.field-input {
+  flex: 1;
+  height: 72rpx;
+  padding: 0 16rpx;
+  font-size: 28rpx;
+  background: #f5f5f5;
+  border-radius: 8rpx;
+}
+
+.field-picker {
+  padding: 12rpx 24rpx;
+  font-size: 26rpx;
+  background: #f5f5f5;
+  border-radius: 8rpx;
+  color: #333;
+}
+
+.extra-text {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: #666;
+}
+
+.error {
+  display: block;
+  margin: 16rpx 0;
+  font-size: 26rpx;
+  color: #c0392b;
+  white-space: pre-line;
+}
+
+.footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 24rpx 32rpx calc(24rpx + env(safe-area-inset-bottom));
+  background: #fff;
+  border-top: 2rpx solid #eee;
+}
+
+.btn {
+  width: 100%;
+  height: 88rpx;
+  line-height: 88rpx;
+  border-radius: 12rpx;
+  font-size: 30rpx;
+  border: none;
+}
+
+.btn.primary {
+  color: #fff;
+  background: #667eea;
+}
+</style>

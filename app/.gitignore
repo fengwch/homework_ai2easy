@@ -1,0 +1,55 @@
+# 依赖
+node_modules/
+**/node_modules/
+
+# 构建输出
+unpackage/
+dist/
+build/
+*.log
+
+# IDE
+.DS_Store
+.project
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# HBuilderX
+.hbuilderx/
+
+# 环境变量
+.env
+.env.local
+.env.*.local
+
+# 测试
+__image_snapshots__/
+__snapshot__/
+coverage/
+
+# 临时文件
+*.tmp
+*.temp
+.cache/
+
+# 系统文件
+Thumbs.db
+.DS_Store
+
+# 代码审查
+/code-review/node_modules
+
+# 其他
+*.lock
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Cursor IDE
+.cursor/
+
+# Comet 工作流运行时数据
+.comet/

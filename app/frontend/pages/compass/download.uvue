@@ -1,0 +1,133 @@
+<template>
+  <view class="page">
+    <view v-if="imageUrl" class="card image-card">
+      <image :src="imageUrl" class="image" mode="widthFix" show-menu-by-longpress />
+    </view>
+    <view v-else class="card empty">
+      <text class="empty-text">还没有生成目标图</text>
+      <button class="btn ghost" @click="backToEdit">返回编辑</button>
+    </view>
+
+    <view class="card">
+      <text class="label">保存与打印</text>
+      <text class="tip">· 在图片上长按可保存到相册（微信小程序 / 手机浏览器）</text>
+      <text class="tip">· 电脑浏览器右键图片 →「图片另存为」</text>
+      <text class="tip">· 打印时选择 A4 纸、缩放比例「实际大小 / 100%」，不要选「适应页面」</text>
+      <text class="tip">· 图片为 2480×3508（300dpi），彩色打印或黑白打印均可读</text>
+    </view>
+
+    <view class="footer">
+      <button class="btn ghost" @click="backToEdit">继续修改</button>
+      <button class="btn primary" @click="restart">再生成一份</button>
+    </view>
+  </view>
+</template>
+
+<script setup lang="uts">
+import { ref } from 'vue'
+import { compassImageUrl } from '@/api/compass'
+import { useCompassStore } from '@/stores/compass'
+
+const store = useCompassStore()
+const imageUrl = ref('')
+
+onShow(() => {
+  const r = store.state.render
+  imageUrl.value = r ? compassImageUrl(r.url) : ''
+})
+
+function backToEdit() {
+  uni.navigateBack()
+}
+
+function restart() {
+  store.reset()
+  uni.navigateTo({ url: '/pages/compass/input' })
+}
+</script>
+
+<style scoped lang="scss">
+.page {
+  min-height: 100vh;
+  padding: 32rpx;
+  padding-bottom: 200rpx;
+  background: #f5f5f5;
+}
+
+.card {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 28rpx;
+  margin-bottom: 24rpx;
+}
+
+.image-card {
+  padding: 16rpx;
+}
+
+.image {
+  width: 100%;
+  border-radius: 8rpx;
+  background: #fafafa;
+}
+
+.empty {
+  text-align: center;
+  padding: 80rpx 28rpx;
+}
+
+.empty-text {
+  display: block;
+  margin-bottom: 24rpx;
+  font-size: 28rpx;
+  color: #666;
+}
+
+.label {
+  display: block;
+  font-size: 28rpx;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 16rpx;
+}
+
+.tip {
+  display: block;
+  margin-bottom: 12rpx;
+  font-size: 26rpx;
+  color: #666;
+  line-height: 1.6;
+}
+
+.footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: row;
+  gap: 24rpx;
+  padding: 24rpx 32rpx calc(24rpx + env(safe-area-inset-bottom));
+  background: #fff;
+  border-top: 2rpx solid #eee;
+}
+
+.btn {
+  flex: 1;
+  height: 88rpx;
+  line-height: 88rpx;
+  border-radius: 12rpx;
+  font-size: 30rpx;
+  border: none;
+}
+
+.btn.primary {
+  color: #fff;
+  background: #667eea;
+}
+
+.btn.ghost {
+  color: #667eea;
+  background: #f4f5ff;
+}
+</style>

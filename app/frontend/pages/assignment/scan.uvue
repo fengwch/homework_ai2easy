@@ -1,0 +1,322 @@
+<template>
+  <view class="container">
+    <view class="header">
+      <text class="title">扫描作业</text>
+      <text class="subtitle">拍摄或选择作业照片进行识别</text>
+    </view>
+
+    <view class="scan-area">
+      <view v-if="images.length === 0" class="empty-area" @click="chooseImage">
+        <text class="icon">📷</text>
+        <text class="hint">点击拍照或从相册选择</text>
+        <text class="sub-hint">仅支持一张图片</text>
+      </view>
+      
+      <view v-else class="image-list">
+        <view
+          v-for="(img, index) in images"
+          :key="index"
+          class="image-item"
+        >
+          <image :src="img" mode="aspectFill" class="preview-img" />
+          <view class="remove-btn" @click="removeImage(index)">×</view>
+        </view>
+      </view>
+    </view>
+
+    <view class="form-section">
+      <view class="input-group">
+        <text class="label">科目</text>
+        <picker :value="subjectIndex" :range="subjects" @change="onSubjectChange">
+          <view class="picker-view">
+            {{ selectedSubject || '请选择科目' }}
+          </view>
+        </picker>
+      </view>
+
+      <view class="input-group">
+        <text class="label">紧急程度</text>
+        <picker :value="urgencyIndex" :range="urgencyLevels" @change="onUrgencyChange">
+          <view class="picker-view">
+            {{ selectedUrgency || '请选择紧急程度' }}
+          </view>
+        </picker>
+      </view>
+    </view>
+
+    <button
+      class="scan-btn"
+      :disabled="images.length === 0 || scanning"
+      @click="handleScan"
+    >
+      {{ scanning ? '识别中...' : '开始识别' }}
+    </button>
+  </view>
+</template>
+
+<script setup lang="uts">
+import { ref } from 'vue'
+import { useUserStore } from '@/stores/user'
+import { ensureLoggedInThen } from '@/utils/auth'
+import { uploadAssignment, triggerAssignmentScan, getScanStatus } from '@/api/assignment'
+
+const userStore = useUserStore()
+
+const images = ref<string[]>([])
+const selectedSubject = ref('')
+const selectedUrgency = ref('')
+const scanning = ref(false)
+
+const subjects = ['数学', '语文', '英语', '科学', '其他']
+const urgencyLevels = ['普通', '紧急', '非常紧急']
+
+const subjectIndex = ref(0)
+const urgencyIndex = ref(0)
+
+const POLL_INTERVAL = 2000
+let pollTimer: ReturnType<typeof setTimeout> | null = null
+
+onShow(() => {
+  ensureLoggedInThen(() => {
+    if (!userStore.currentChildId.value) {
+      uni.showToast({ title: '请先选择孩子', icon: 'none' })
+      uni.reLaunch({ url: '/pages/child/list' })
+    }
+  })
+})
+
+function chooseImage() {
+  if (images.value.length >= 1) return
+  uni.showActionSheet({
+    itemList: ['拍照', '从相册选择'],
+    success: (res) => {
+      const sourceType = res.tapIndex === 0 ? ['camera'] : ['album']
+      uni.chooseImage({
+        count: 1,
+        sizeType: ['compressed'],
+        sourceType,
+        success: (chooseRes) => {
+          images.value = chooseRes.tempFilePaths
+        },
+        fail: (err) => {
+          console.error('选择图片失败:', err)
+          uni.showToast({
+            title: '选择图片失败',
+            icon: 'none'
+          })
+        }
+      })
+    }
+  })
+}
+
+function removeImage(index: number) {
+  images.value.splice(index, 1)
+}
+
+function onSubjectChange(e: any) {
+  subjectIndex.value = e.detail.value
+  selectedSubject.value = subjects[e.detail.value]
+}
+
+function onUrgencyChange(e: any) {
+  urgencyIndex.value = e.detail.value
+  selectedUrgency.value = urgencyLevels[e.detail.value]
+}
+
+async function handleScan() {
+  if (images.value.length === 0) {
+    uni.showToast({
+      title: '请先选择图片',
+      icon: 'none'
+    })
+    return
+  }
+
+  const childId = userStore.currentChildId.value
+  if (!childId) {
+    uni.showToast({ title: '请先选择孩子', icon: 'none' })
+    return
+  }
+
+  scanning.value = true
+  
+  try {
+    // 1. 先上传图片，获取作业 ID
+    const uploadRes = await uploadAssignment(images.value[0], childId)
+    const assignmentId = uploadRes.id
+    
+    // 2. 按作业 ID 触发识别（后端要求使用 POST /api/v1/assignments/{id}/scan）
+    await triggerAssignmentScan(assignmentId, selectedSubject.value || '数学')
+    uni.showToast({ title: '已提交识别', icon: 'success' })
+    
+    // 3. 轮询识别进度，完成后跳转
+    pollScanStatus(assignmentId)
+  } catch (err) {
+    console.error('扫描失败:', err)
+    scanning.value = false
+    uni.showToast({
+      title: (err as Error).message || '识别失败，请重试',
+      icon: 'none'
+    })
+  }
+}
+
+function pollScanStatus(id: number) {
+  if (pollTimer) clearTimeout(pollTimer)
+  getScanStatus(id)
+    .then((data: any) => {
+      const status = data.status ?? data.scan_status
+      if (status === 'complete' || status === 'completed') {
+        scanning.value = false
+        uni.showToast({ title: '识别完成', icon: 'success' })
+        uni.redirectTo({ url: `/pages/assignment/recognize?id=${id}` })
+        return
+      }
+      if (status === 'error' || status === 'failed') {
+        scanning.value = false
+        uni.showToast({ title: '识别失败', icon: 'none' })
+        uni.redirectTo({ url: `/pages/assignment/detail?id=${id}` })
+        return
+      }
+      pollTimer = setTimeout(() => pollScanStatus(id), POLL_INTERVAL)
+    })
+    .catch(() => {
+      pollTimer = setTimeout(() => pollScanStatus(id), POLL_INTERVAL)
+    })
+}
+</script>
+
+<style scoped lang="scss">
+.container {
+  padding: 32rpx;
+  min-height: 100vh;
+  background: #f5f5f5;
+}
+
+.header {
+  margin-bottom: 32rpx;
+}
+
+.title {
+  font-size: 40rpx;
+  font-weight: bold;
+  color: #333;
+  display: block;
+  margin-bottom: 12rpx;
+}
+
+.subtitle {
+  font-size: 26rpx;
+  color: #999;
+  display: block;
+}
+
+.scan-area {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 32rpx;
+  margin-bottom: 32rpx;
+}
+
+.empty-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 120rpx 0;
+  border: 2rpx dashed #e5e5e5;
+  border-radius: 12rpx;
+}
+
+.icon {
+  font-size: 80rpx;
+  margin-bottom: 24rpx;
+}
+
+.hint {
+  font-size: 28rpx;
+  color: #666;
+  margin-bottom: 12rpx;
+}
+
+.sub-hint {
+  font-size: 24rpx;
+  color: #999;
+}
+
+.image-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.image-item {
+  position: relative;
+  width: 200rpx;
+  height: 200rpx;
+  border-radius: 12rpx;
+  overflow: hidden;
+}
+
+.preview-img {
+  width: 100%;
+  height: 100%;
+}
+
+.remove-btn {
+  position: absolute;
+  top: 8rpx;
+  right: 8rpx;
+  width: 40rpx;
+  height: 40rpx;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32rpx;
+  line-height: 1;
+}
+
+.form-section {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 32rpx;
+  margin-bottom: 32rpx;
+}
+
+.input-group {
+  margin-bottom: 32rpx;
+}
+
+.label {
+  font-size: 28rpx;
+  color: #333;
+  display: block;
+  margin-bottom: 16rpx;
+}
+
+.picker-view {
+  padding: 24rpx;
+  border: 2rpx solid #e5e5e5;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  color: #333;
+}
+
+.scan-btn {
+  width: 100%;
+  height: 88rpx;
+  background: #667eea;
+  color: #fff;
+  border-radius: 12rpx;
+  font-size: 32rpx;
+  border: none;
+}
+
+.scan-btn[disabled] {
+  background: #ccc;
+}
+</style>

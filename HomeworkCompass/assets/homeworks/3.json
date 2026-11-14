@@ -1,0 +1,139 @@
+{
+  "date": "2026-11-09",
+  "student_name": "mino",
+  "slogan": "",
+  "items": [
+    {
+      "seq": 1,
+      "subject": "语文",
+      "task": "读p54",
+      "quantity": "",
+      "requirements": [],
+      "requirements_all": [],
+      "priority": "normal",
+      "priority_signals": [],
+      "estimated_minutes": null,
+      "type": "reading",
+      "provenance": {
+        "task": "verbatim",
+        "quantity": "verbatim",
+        "subject": "verbatim"
+      }
+    },
+    {
+      "seq": 2,
+      "subject": "语文",
+      "task": "复习第三单元",
+      "quantity": "",
+      "requirements": [],
+      "requirements_all": [],
+      "priority": "normal",
+      "priority_signals": [],
+      "estimated_minutes": null,
+      "type": "written",
+      "provenance": {
+        "task": "verbatim",
+        "quantity": "verbatim",
+        "subject": "verbatim"
+      }
+    },
+    {
+      "seq": 3,
+      "subject": "数学",
+      "task": "读P54-55",
+      "quantity": "",
+      "requirements": [],
+      "requirements_all": [],
+      "priority": "normal",
+      "priority_signals": [],
+      "estimated_minutes": null,
+      "type": "reading",
+      "provenance": {
+        "task": "verbatim",
+        "quantity": "verbatim",
+        "subject": "verbatim"
+      }
+    },
+    {
+      "seq": 4,
+      "subject": "英语",
+      "task": "读p23三次",
+      "quantity": "三次",
+      "requirements": [],
+      "requirements_all": [],
+      "priority": "normal",
+      "priority_signals": [],
+      "estimated_minutes": null,
+      "type": "reading",
+      "provenance": {
+        "task": "verbatim",
+        "quantity": "verbatim",
+        "subject": "verbatim"
+      }
+    }
+  ],
+  "extras": [],
+  "pending": [],
+  "source_text": "11月9日\n语文\n1.读p54\n2.复习第三单元\n-5\n数学\n读P54-55\n英语\n读p23三次",
+  "source_kind": "ocr",
+  "report": {
+    "traced": [
+      {
+        "where": "item1.task",
+        "value": "读p54",
+        "level": "verbatim"
+      },
+      {
+        "where": "item1.quantity",
+        "value": "",
+        "level": "verbatim"
+      },
+      {
+        "where": "item2.task",
+        "value": "复习第三单元",
+        "level": "verbatim"
+      },
+      {
+        "where": "item2.quantity",
+        "value": "",
+        "level": "verbatim"
+      },
+      {
+        "where": "item3.task",
+        "value": "读P54-55",
+        "level": "verbatim"
+      },
+      {
+        "where": "item3.quantity",
+        "value": "",
+        "level": "verbatim"
+      },
+      {
+        "where": "item4.task",
+        "value": "读p23三次",
+        "level": "verbatim"
+      },
+      {
+        "where": "item4.quantity",
+        "value": "三次",
+        "level": "verbatim"
+      }
+    ],
+    "advisories": [],
+    "uncovered": [],
+    "priority_overrides": [],
+    "notes": [
+      "已自动归入套话、不转家长确认 1 段：-5",
+      "家长确认不纳入：（本图来自 OCR 识别，请家长核对每一项）"
+    ],
+    "stats": {
+      "items_safe": 4,
+      "items_dropped": 0,
+      "unsourced": 0,
+      "advisories": 0,
+      "auto_dropped_boilerplate": 1,
+      "uncovered": 0
+    }
+  },
+  "unresolved": []
+}

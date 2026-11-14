@@ -1,0 +1,382 @@
+<template>
+  <view class="container">
+    <view class="header">
+      <view class="tabs">
+        <text
+          v-for="tab in tabs"
+          :key="tab.value"
+          class="tab-item"
+          :class="{ active: currentTab === tab.value }"
+          @click="switchTab(tab.value)"
+        >
+          {{ tab.label }}
+        </text>
+      </view>
+    </view>
+
+    <scroll-view scroll-y class="leaderboard-list">
+      <view v-if="loading" class="loading">
+        <text>加载中...</text>
+      </view>
+
+      <view v-else-if="rankings.length === 0" class="empty">
+        <text>暂无排行榜数据</text>
+      </view>
+
+      <view v-else>
+        <!-- 前三名 -->
+        <view v-if="rankings.length >= 3" class="top-three">
+          <view class="second-place">
+            <image
+              v-if="rankings[1].avatar"
+              :src="rankings[1].avatar"
+              class="avatar"
+              mode="aspectFill"
+            />
+            <view v-else class="avatar-placeholder">{{ rankings[1].name[0] }}</view>
+            <text class="name">{{ rankings[1].name }}</text>
+            <text class="points">{{ rankings[1].points }}分</text>
+            <text class="rank">2</text>
+          </view>
+          
+          <view class="first-place">
+            <image
+              v-if="rankings[0].avatar"
+              :src="rankings[0].avatar"
+              class="avatar"
+              mode="aspectFill"
+            />
+            <view v-else class="avatar-placeholder">{{ rankings[0].name[0] }}</view>
+            <text class="name">{{ rankings[0].name }}</text>
+            <text class="points">{{ rankings[0].points }}分</text>
+            <text class="rank">1</text>
+          </view>
+          
+          <view class="third-place">
+            <image
+              v-if="rankings[2].avatar"
+              :src="rankings[2].avatar"
+              class="avatar"
+              mode="aspectFill"
+            />
+            <view v-else class="avatar-placeholder">{{ rankings[2].name[0] }}</view>
+            <text class="name">{{ rankings[2].name }}</text>
+            <text class="points">{{ rankings[2].points }}分</text>
+            <text class="rank">3</text>
+          </view>
+        </view>
+
+        <!-- 其他排名 -->
+        <view class="other-rankings">
+          <view
+            v-for="(item, index) in otherRankings"
+            :key="item.id"
+            class="ranking-item"
+            :class="{ 'my-ranking': item.isMe }"
+          >
+            <text class="rank-number">{{ index + 4 }}</text>
+            <image
+              v-if="item.avatar"
+              :src="item.avatar"
+              class="avatar"
+              mode="aspectFill"
+            />
+            <view v-else class="avatar-placeholder">{{ item.name[0] }}</view>
+            <view class="info">
+              <text class="name">{{ item.name }}</text>
+              <text class="grade">{{ item.grade || '' }}</text>
+            </view>
+            <text class="points">{{ item.points }}分</text>
+          </view>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+</template>
+
+<script setup lang="uts">
+import { ref, computed, onMounted } from 'vue'
+import { useUserStore } from '@/stores/user'
+
+const userStore = useUserStore()
+
+const rankings = ref<Array<{
+  id: number
+  name: string
+  avatar?: string
+  points: number
+  grade?: string
+  isMe?: boolean
+}>>([])
+
+const loading = ref(true)
+const currentTab = ref('week')
+
+const tabs = [
+  { label: '周榜', value: 'week' },
+  { label: '月榜', value: 'month' },
+  { label: '总榜', value: 'all' }
+]
+
+const otherRankings = computed(() => {
+  return rankings.value.slice(3)
+})
+
+onMounted(() => {
+  loadRankings()
+})
+
+function loadRankings() {
+  loading.value = true
+  // TODO: 调用实际的排行榜 API
+  // fetchLeaderboard(currentTab.value)
+  
+  // 使用 mock 数据
+  setTimeout(() => {
+    rankings.value = [
+      { id: 1, name: '小明', points: 2500, grade: '三年级' },
+      { id: 2, name: '小红', points: 2300, grade: '三年级' },
+      { id: 3, name: '小刚', points: 2100, grade: '四年级' },
+      { id: 4, name: '小丽', points: 2000, grade: '三年级', isMe: true },
+      { id: 5, name: '小强', points: 1900, grade: '四年级' }
+    ]
+    loading.value = false
+  }, 500)
+}
+
+function switchTab(tab: string) {
+  currentTab.value = tab
+  loadRankings()
+}
+</script>
+
+<style scoped lang="scss">
+.container {
+  min-height: 100vh;
+  background: #f5f5f5;
+}
+
+.header {
+  background: #fff;
+  padding: 32rpx;
+  border-bottom: 2rpx solid #f5f5f5;
+}
+
+.tabs {
+  display: flex;
+  gap: 24rpx;
+}
+
+.tab-item {
+  padding: 12rpx 24rpx;
+  font-size: 26rpx;
+  color: #999;
+  border-bottom: 4rpx solid transparent;
+}
+
+.tab-item.active {
+  color: #667eea;
+  border-bottom-color: #667eea;
+}
+
+.leaderboard-list {
+  height: calc(100vh - 200rpx);
+  padding: 32rpx;
+}
+
+.loading,
+.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 120rpx 0;
+  font-size: 28rpx;
+  color: #999;
+}
+
+.top-three {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 24rpx;
+  margin-bottom: 40rpx;
+  padding: 40rpx 0;
+}
+
+.first-place,
+.second-place,
+.third-place {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+.first-place {
+  order: 2;
+}
+
+.second-place {
+  order: 1;
+}
+
+.third-place {
+  order: 3;
+}
+
+.first-place .avatar,
+.first-place .avatar-placeholder {
+  width: 120rpx;
+  height: 120rpx;
+  border: 4rpx solid #ffd700;
+}
+
+.second-place .avatar,
+.second-place .avatar-placeholder {
+  width: 100rpx;
+  height: 100rpx;
+  border: 4rpx solid #c0c0c0;
+}
+
+.third-place .avatar,
+.third-place .avatar-placeholder {
+  width: 100rpx;
+  height: 100rpx;
+  border: 4rpx solid #cd7f32;
+}
+
+.avatar {
+  border-radius: 50%;
+  margin-bottom: 12rpx;
+}
+
+.avatar-placeholder {
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40rpx;
+  font-weight: bold;
+  margin-bottom: 12rpx;
+}
+
+.name {
+  font-size: 26rpx;
+  color: #333;
+  margin-bottom: 8rpx;
+  text-align: center;
+}
+
+.points {
+  font-size: 24rpx;
+  color: #667eea;
+  font-weight: bold;
+  margin-bottom: 8rpx;
+}
+
+.rank {
+  position: absolute;
+  top: -20rpx;
+  right: -20rpx;
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 50%;
+  background: #667eea;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24rpx;
+  font-weight: bold;
+}
+
+.first-place .rank {
+  background: #ffd700;
+}
+
+.second-place .rank {
+  background: #c0c0c0;
+}
+
+.third-place .rank {
+  background: #cd7f32;
+}
+
+.other-rankings {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+}
+
+.ranking-item {
+  display: flex;
+  align-items: center;
+  padding: 24rpx 0;
+  border-bottom: 2rpx solid #f5f5f5;
+}
+
+.ranking-item:last-child {
+  border-bottom: none;
+}
+
+.ranking-item.my-ranking {
+  background: #f0f4ff;
+  border-radius: 12rpx;
+  padding: 24rpx;
+  margin: 8rpx 0;
+}
+
+.rank-number {
+  width: 60rpx;
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #999;
+  text-align: center;
+}
+
+.avatar {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 50%;
+  margin: 0 24rpx;
+}
+
+.avatar-placeholder {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32rpx;
+  font-weight: bold;
+  margin: 0 24rpx;
+}
+
+.info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.name {
+  font-size: 28rpx;
+  color: #333;
+  margin-bottom: 8rpx;
+}
+
+.grade {
+  font-size: 24rpx;
+  color: #999;
+}
+
+.points {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #667eea;
+}
+</style>

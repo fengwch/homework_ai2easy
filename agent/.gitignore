@@ -1,0 +1,53 @@
+# 虚拟环境
+venv/
+.venv/
+env/
+
+# 环境与密钥（勿提交）
+.env
+.env.local
+*.local
+configs/*AccessKey*.csv
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+eggs/
+*.egg-info/
+*.egg
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# 日志目录
+logs/
+
+# 小红书 token 缓存（勿提交）
+marketing/xiaohongshu/.token_cache.json
+
+# xiaohongshu-mcp Docker 数据（含登录态）；保留空目录占位
+tools/xiaohongshu-mcp/data/*
+!tools/xiaohongshu-mcp/data/.gitkeep
+
+# 上游 xiaohongshu-mcp 源码克隆（体积大，仅本地参考）
+tools/xiaohongshu-mcp/code/
+
+# 小红书运营运行日志（本地生成，不提交）
+marketing/logs/*
+!marketing/logs/.gitkeep
+
+# 分格测试输出（查看剪切效果）
+childs/
+
+# 系统
+.DS_Store

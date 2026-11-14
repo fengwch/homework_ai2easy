@@ -1,0 +1,509 @@
+<template>
+  <view class="container">
+    <view class="header">
+      <view class="header-top">
+        <text class="welcome">欢迎，{{ userStore.userInfo.value?.nickname || '家长' }}</text>
+        <!-- 孩子切换交给下方卡片的选中态（D8），顶部不再重复放一个切换器 -->
+        <text class="header-hint">{{ currentChildName || '请选择孩子' }}</text>
+      </view>
+    </view>
+
+    <!-- 作业工作台：上传与作业列表从孩子卡片移到此处 -->
+    <view class="bench">
+      <text class="bench-title">作业工作台</text>
+      <view class="bench-row">
+        <view class="bench-card" @click="goToScan">
+          <view class="bench-icon">
+            <view class="icon-frame" />
+          </view>
+          <text class="bench-name">上传作业</text>
+          <text class="bench-sub">拍照或从相册选择</text>
+        </view>
+        <view class="bench-card" @click="goToAssignmentList">
+          <view class="bench-icon list">
+            <view class="icon-lines" />
+          </view>
+          <text class="bench-name">查看作业列表</text>
+          <text class="bench-sub">历史作业与辅导</text>
+        </view>
+      </view>
+
+      <view
+        class="compass-entry"
+        :class="{ disabled: !hasCurrentChild }"
+        @click="goToCompass"
+      >
+        <view class="compass-text">
+          <text class="compass-name">作业目标生成器</text>
+          <text class="compass-sub">{{ hasCurrentChild ? '当前孩子：' + currentChildName : '请先选择孩子' }}</text>
+        </view>
+        <text class="compass-arrow">›</text>
+      </view>
+    </view>
+
+    <!-- 加载中：骨架卡，不显示「还没有添加孩子」 -->
+    <view v-if="loading" class="child-list">
+      <view v-for="i in 2" :key="'skel' + i" class="skeleton-card">
+        <view class="skeleton-avatar" />
+        <view class="skeleton-lines">
+          <view class="skeleton-line w60" />
+          <view class="skeleton-line w40" />
+        </view>
+      </view>
+    </view>
+
+    <view v-else-if="loadError" class="empty error">
+      <text class="empty-text">加载失败，请检查网络或后端服务</text>
+      <button class="retry-btn" @click="retryLoad" aria-label="重试加载">重试</button>
+    </view>
+
+    <view v-else-if="userStore.children.value.length === 0" class="empty">
+      <text class="empty-text">还没有添加孩子档案</text>
+      <text class="empty-hint">点击底部「添加小孩」创建第一个孩子档案</text>
+    </view>
+
+    <view v-else class="child-list">
+      <ChildCard
+        v-for="child in userStore.children.value"
+        :key="child.id"
+        :child="child"
+        :active="String(userStore.currentChildId.value) === String(child.id)"
+        @select="selectChild"
+        @edit="goToEdit"
+      />
+    </view>
+
+    <view v-if="showGuide" class="guide-overlay">
+      <view class="guide-content">
+        <text class="guide-title">欢迎使用 AI 作业助手</text>
+        <view class="guide-step">
+          <text class="guide-step-title">1. 添加孩子档案</text>
+          <text class="guide-step-text">点击底部「添加小孩」，完善孩子的基本信息与年级。</text>
+        </view>
+        <view class="guide-step">
+          <text class="guide-step-title">2. 上传或查看作业</text>
+          <text class="guide-step-text">在首页「作业工作台」点击「上传作业」拍照或选图；「查看作业列表」看历史作业。</text>
+        </view>
+        <view class="guide-step">
+          <text class="guide-step-title">3. 识别并生成辅导</text>
+          <text class="guide-step-text">点击「开始识别」- 等待 - 点击「生成内容」 - 等待 - 点击「开始学习」。</text>
+        </view>
+        <view class="guide-step">
+          <text class="guide-step-title">4. 生成每日作业目标图</text>
+          <text class="guide-step-text">在「作业目标生成器」粘贴老师发的作业，确认后生成可打印的 A4 目标图。</text>
+        </view>
+        <button class="guide-btn" @click="closeGuide">我知道了，开始使用</button>
+      </view>
+    </view>
+
+    <PrivacyPopup />
+    <BottomTabBar current="home" />
+  </view>
+</template>
+
+<script setup lang="uts">
+import { ref, computed } from 'vue'
+import { onShareAppMessage, onShareTimeline } from '@dcloudio/uni-app'
+import { useUserStore } from '@/stores/user'
+import { useAppStore } from '@/stores/app'
+import { ensureLoggedInThen } from '@/utils/auth'
+import PrivacyPopup from '@/components/common/PrivacyPopup.uvue'
+import BottomTabBar from '@/components/common/BottomTabBar.uvue'
+import ChildCard from '@/components/home/ChildCard.uvue'
+
+const userStore = useUserStore()
+const appStore = useAppStore()
+const loadError = ref(false)
+const loading = ref(false)
+
+const hasCurrentChild = computed(() => !!userStore.currentChildId.value)
+const currentChildName = computed(
+  () => userStore.children.value.find((c) => String(c.id) === String(userStore.currentChildId.value))?.name || ''
+)
+
+const showGuide = computed(() => appStore.isFirstLaunch.value)
+
+// #ifdef MP-WEIXIN
+// 小程序分享给朋友
+onShareAppMessage(() => {
+  return {
+    title: 'AI 作业助手 - 孩子作业管理',
+    path: '/pages/child/list'
+  }
+})
+
+// 小程序分享到朋友圈
+onShareTimeline(() => {
+  return {
+    title: 'AI 作业助手 - 孩子作业管理'
+  }
+})
+// #endif
+
+// 页面显示时检查登录状态和加载数据（小程序下会等待静默微信登录）
+onShow(() => {
+  ensureLoggedInThen(() => {
+    loadError.value = false
+    loadChildren()
+  })
+})
+
+async function loadChildren() {
+  loadError.value = false
+  loading.value = true
+  try {
+    await userStore.loadChildren()
+  } catch (err) {
+    console.error('加载儿童列表失败:', err)
+    loadError.value = true
+  } finally {
+    loading.value = false
+  }
+}
+
+function retryLoad() {
+  loadChildren()
+}
+
+function selectChild(id: number | string) {
+  userStore.setCurrentChild(id as number)
+  uni.showToast({
+    title: '已切换到 ' + userStore.children.value.find(c => c.id === id)?.name,
+    icon: 'none'
+  })
+}
+
+function goToEdit(id?: number | string) {
+  if (id) {
+    uni.navigateTo({ url: `/pages/child/edit?id=${id}&mode=edit` })
+  } else {
+    uni.navigateTo({ url: '/pages/child/edit?mode=create' })
+  }
+}
+
+function goToProfile() {
+  uni.navigateTo({ url: '/pages/profile/index' })
+}
+
+function goToAssignmentList() {
+  uni.navigateTo({ url: '/pages/assignment/list' })
+}
+
+function goToScan() {
+  if (!userStore.currentChildId.value) {
+    uni.showToast({ title: '请先选择孩子', icon: 'none' })
+    return
+  }
+  uni.navigateTo({ url: '/pages/assignment/scan' })
+}
+
+function goToCompass() {
+  const childId = userStore.currentChildId.value
+  if (!childId) {
+    uni.showToast({ title: '请先选择孩子', icon: 'none' })
+    return
+  }
+  const childName = currentChildName.value
+  // uni 的 query 会自动 encode/decode，这里不能再 encodeURIComponent，否则中文会被二次编码
+  uni.navigateTo({
+    url: `/pages/compass/input?childId=${childId}&childName=${childName}`
+  })
+}
+
+function closeGuide() {
+  appStore.setFirstLaunch(false)
+}
+</script>
+
+<style scoped lang="scss">
+.container {
+  padding: 32rpx;
+  padding-bottom: calc(180rpx + env(safe-area-inset-bottom) + 24rpx);
+  min-height: 100vh;
+  background: #f5f5f5;
+}
+
+.header {
+  margin-bottom: 24rpx;
+}
+
+.header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.welcome {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #333;
+}
+
+.header-hint {
+  font-size: 26rpx;
+  color: #666;
+}
+
+.bench {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-bottom: 24rpx;
+}
+
+.bench-title {
+  display: block;
+  font-size: 24rpx;
+  color: #666;
+  margin-bottom: 20rpx;
+  letter-spacing: 2rpx;
+}
+
+.bench-row {
+  display: flex;
+  flex-direction: row;
+  gap: 24rpx;
+}
+
+.bench-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  min-height: 220rpx;
+  padding: 24rpx 16rpx;
+  background: #f7f8ff;
+  border: 2rpx solid #dde0ff;
+  border-radius: 16rpx;
+}
+
+.bench-icon {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 20rpx;
+  background: #667eea;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8rpx;
+}
+
+.bench-icon.list {
+  background: #11998e;
+}
+
+/* 图标用纯 view 绘制，不用 emoji（D9） */
+.icon-frame {
+  width: 32rpx;
+  height: 32rpx;
+  border: 4rpx solid #fff;
+  border-radius: 8rpx;
+}
+
+.icon-lines {
+  width: 32rpx;
+  height: 20rpx;
+  border-top: 4rpx solid #fff;
+  border-bottom: 4rpx solid #fff;
+}
+
+.bench-name {
+  font-size: 30rpx;
+  font-weight: bold;
+  color: #333;
+}
+
+.bench-sub {
+  font-size: 24rpx;
+  color: #666;
+}
+
+.compass-entry {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 24rpx;
+  padding: 20rpx 24rpx;
+  min-height: 88rpx;
+  background: #f7f8ff;
+  border: 2rpx solid #dde0ff;
+  border-radius: 16rpx;
+}
+
+.compass-entry.disabled {
+  background: #f2f2f2;
+  border-color: #e5e5e5;
+}
+
+.compass-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
+
+.compass-name {
+  font-size: 28rpx;
+  font-weight: bold;
+  color: #333;
+}
+
+.compass-entry.disabled .compass-name {
+  color: #999;
+}
+
+.compass-sub {
+  font-size: 24rpx;
+  color: #666;
+}
+
+.compass-entry.disabled .compass-sub {
+  color: #999;
+}
+
+.compass-arrow {
+  font-size: 36rpx;
+  color: #667eea;
+}
+
+.compass-entry.disabled .compass-arrow {
+  color: #ccc;
+}
+
+.child-list {
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+}
+
+.skeleton-card {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 28rpx 32rpx;
+  background: #fff;
+  border-radius: 16rpx;
+}
+
+.skeleton-avatar {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 48rpx;
+  background: #eee;
+  margin-right: 24rpx;
+}
+
+.skeleton-lines {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.skeleton-line {
+  height: 24rpx;
+  border-radius: 8rpx;
+  background: #eee;
+}
+
+.skeleton-line.w60 {
+  width: 60%;
+}
+
+.skeleton-line.w40 {
+  width: 40%;
+}
+
+.empty {
+  text-align: center;
+  padding: 120rpx 0;
+}
+
+.empty-text {
+  display: block;
+  font-size: 32rpx;
+  color: #999;
+  margin-bottom: 20rpx;
+}
+
+.empty-hint {
+  display: block;
+  font-size: 26rpx;
+  color: #999;
+}
+
+.empty.error .empty-text {
+  color: #c0392b;
+}
+
+.retry-btn {
+  margin-top: 32rpx;
+  padding: 20rpx 48rpx;
+  background: #667eea;
+  color: #fff;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  border: none;
+}
+
+.guide-overlay {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40rpx;
+  z-index: 2000;
+}
+
+.guide-content {
+  width: 100%;
+  max-width: 640rpx;
+  background: #ffffff;
+  border-radius: 24rpx;
+  padding: 40rpx 32rpx 32rpx;
+  box-shadow: 0 12rpx 40rpx rgba(0, 0, 0, 0.15);
+}
+
+.guide-title {
+  font-size: 34rpx;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 24rpx;
+}
+
+.guide-step {
+  margin-bottom: 16rpx;
+}
+
+.guide-step-title {
+  font-size: 28rpx;
+  color: #667eea;
+  display: block;
+  margin-bottom: 4rpx;
+}
+
+.guide-step-text {
+  font-size: 26rpx;
+  color: #666;
+  line-height: 1.6;
+  display: block;
+}
+
+.guide-btn {
+  margin-top: 24rpx;
+  width: 100%;
+  height: 80rpx;
+  background: #667eea;
+  color: #fff;
+  border-radius: 16rpx;
+  font-size: 30rpx;
+  border: none;
+}
+</style>

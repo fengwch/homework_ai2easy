@@ -1,0 +1,1805 @@
+openapi: 3.0.3
+info:
+  title: 作业 AI 助手 API
+  description: 作业 AI 助手后端系统 RESTful API 文档
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@example.com
+
+servers:
+  - url: http://localhost:8000
+    description: 开发环境
+  - url: https://api.example.com
+    description: 生产环境
+
+tags:
+  - name: AuthService
+    description: 认证服务
+  - name: UserService
+    description: 用户服务
+  - name: ChildService
+    description: 儿童档案服务
+  - name: AssignmentService
+    description: 作业服务
+
+paths:
+  # 认证服务
+  /api/v1/auth/send-sms:
+    post:
+      tags:
+        - AuthService
+      summary: 发送验证码
+      description: 向指定手机号发送验证码
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendSMSRequest'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SendSMSReply'
+
+  /api/v1/auth/login:
+    post:
+      tags:
+        - AuthService
+      summary: 手机号验证码登录
+      description: 使用手机号和验证码登录
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginReply'
+
+  /api/v1/auth/password-login:
+    post:
+      tags:
+        - AuthService
+      summary: 密码登录
+      description: 使用手机号和密码登录
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordLoginRequest'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginReply'
+
+  /api/v1/auth/wechat-login:
+    post:
+      tags:
+        - AuthService
+      summary: 微信一键登录
+      description: 使用微信授权码登录
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WechatLoginRequest'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginReply'
+
+  /api/v1/auth/register:
+    post:
+      tags:
+        - AuthService
+      summary: 用户注册
+      description: 注册新用户
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginReply'
+
+  /api/v1/auth/refresh:
+    post:
+      tags:
+        - AuthService
+      summary: 刷新Token
+      description: 刷新访问令牌
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshReply'
+
+  /api/v1/auth/reset-password:
+    post:
+      tags:
+        - AuthService
+      summary: 重置密码
+      description: 重置用户密码
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResetPasswordReply'
+
+  # 用户服务
+  /api/v1/user/profile:
+    get:
+      tags:
+        - UserService
+      summary: 获取用户信息
+      description: 获取当前登录用户的详细信息
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetProfileReply'
+    put:
+      tags:
+        - UserService
+      summary: 更新用户信息
+      description: 更新当前登录用户的信息
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProfileRequest'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetProfileReply'
+
+  /api/v1/user/avatar:
+    post:
+      tags:
+        - UserService
+      summary: 上传头像
+      description: 上传用户头像
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadAvatarReply'
+
+  /api/v1/user/change-password:
+    post:
+      tags:
+        - UserService
+      summary: 修改密码
+      description: 修改用户密码
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChangePasswordReply'
+
+  /api/v1/user/bind-phone:
+    post:
+      tags:
+        - UserService
+      summary: 绑定手机号
+      description: 绑定手机号
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BindPhoneRequest'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BindPhoneReply'
+
+  /api/v1/user/subscription:
+    get:
+      tags:
+        - UserService
+      summary: 获取订阅信息
+      description: 获取用户订阅信息
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetSubscriptionReply'
+    post:
+      tags:
+        - UserService
+      summary: 更新订阅
+      description: 更新用户订阅计划
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSubscriptionRequest'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateSubscriptionReply'
+
+  # 儿童档案服务
+  /api/v1/children:
+    get:
+      tags:
+        - ChildService
+      summary: 获取儿童列表
+      description: 获取当前用户的所有儿童档案列表
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListChildrenReply'
+    post:
+      tags:
+        - ChildService
+      summary: 创建儿童档案
+      description: 创建新的儿童档案
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateChildRequest'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetChildReply'
+
+  /api/v1/children/{id}:
+    get:
+      tags:
+        - ChildService
+      summary: 获取儿童详情
+      description: 获取指定儿童的详细信息
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetChildReply'
+    put:
+      tags:
+        - ChildService
+      summary: 更新儿童档案
+      description: 更新指定儿童档案
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateChildRequest'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetChildReply'
+    delete:
+      tags:
+        - ChildService
+      summary: 删除儿童档案
+      description: 删除指定儿童档案
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteChildReply'
+
+  /api/v1/children/{id}/avatar:
+    post:
+      tags:
+        - ChildService
+      summary: 上传儿童头像
+      description: 上传指定儿童的头像
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadAvatarReply'
+
+  # 作业服务
+  /api/v1/assignments:
+    get:
+      tags:
+        - AssignmentService
+      summary: 获取作业列表
+      description: 获取作业列表
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: child_id
+          in: query
+          schema:
+            type: integer
+            format: int64
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, processing, completed, failed]
+        - name: subject
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            format: int32
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            format: int32
+            default: 20
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListAssignmentsReply'
+
+  /api/v1/assignments/upload:
+    post:
+      tags:
+        - AssignmentService
+      summary: 上传作业图片
+      description: 上传作业图片
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                child_id:
+                  type: integer
+                  format: int64
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadImageReply'
+
+  /api/v1/assignments/scan:
+    post:
+      tags:
+        - AssignmentService
+      summary: 扫描识别作业
+      description: 扫描识别作业内容
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScanRequest'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScanReply'
+
+  /api/v1/assignments/{id}:
+    get:
+      tags:
+        - AssignmentService
+      summary: 获取作业详情
+      description: 获取作业详细信息
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetAssignmentReply'
+    put:
+      tags:
+        - AssignmentService
+      summary: 更新作业信息
+      description: 更新作业信息
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAssignmentRequest'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateAssignmentReply'
+
+  /api/v1/assignments/{id}/scan-status:
+    get:
+      tags:
+        - AssignmentService
+      summary: 获取识别进度
+      description: 获取作业识别进度
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetScanStatusReply'
+
+  /api/v1/assignments/{id}/questions/{question_id}:
+    put:
+      tags:
+        - AssignmentService
+      summary: 编辑识别结果
+      description: 编辑题目的识别结果
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: question_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateQuestionRequest'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateQuestionReply'
+    delete:
+      tags:
+        - AssignmentService
+      summary: 删除题目
+      description: 删除指定题目
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: question_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteQuestionReply'
+
+  /api/v1/assignments/{id}/split-questions:
+    post:
+      tags:
+        - AssignmentService
+      summary: 题目分割确认
+      description: 确认题目分割结果
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SplitQuestionsRequest'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SplitQuestionsReply'
+
+  /api/v1/assignments/{id}/questions/{question_id}/type:
+    put:
+      tags:
+        - AssignmentService
+      summary: 题目类型标注
+      description: 更新题目类型
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: question_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateQuestionTypeRequest'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateQuestionTypeReply'
+
+  /api/v1/assignments/{id}/questions/{question_id}/knowledge-points:
+    get:
+      tags:
+        - AssignmentService
+      summary: 获取知识点
+      description: 获取题目的知识点匹配结果
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: question_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetKnowledgePointsReply'
+    put:
+      tags:
+        - AssignmentService
+      summary: 更新知识点
+      description: 更新题目的知识点
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: question_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateKnowledgePointsRequest'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateKnowledgePointsReply'
+
+  /api/v1/assignments/{assignment_id}/generate:
+    post:
+      tags:
+        - AssignmentService
+      summary: 生成个性化内容
+      description: 基于作业生成个性化内容（如故事）
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: assignment_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerateContentReply'
+
+  /api/v1/assignments/{assignment_id}/generate-status:
+    get:
+      tags:
+        - AssignmentService
+      summary: 查询内容生成状态
+      description: 查询个性化内容生成状态
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: assignment_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetGenerateStatusReply'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: "在请求头中添加 Authorization: Bearer <token>"
+
+  schemas:
+    # 通用响应格式
+    BaseReply:
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+          description: 状态码，0 表示成功
+        message:
+          type: string
+          description: 响应消息
+
+    # 认证服务
+    SendSMSRequest:
+      type: object
+      required:
+        - phone
+        - scene
+      properties:
+        phone:
+          type: string
+          description: 手机号
+        scene:
+          type: string
+          enum: [login, reset_password]
+          description: 场景
+
+    SendSMSReply:
+      allOf:
+        - $ref: '#/components/schemas/BaseReply'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                expires_in:
+                  type: integer
+                  format: int32
+                  description: 过期时间（秒）
+
+    LoginRequest:
+      type: object
+      required:
+        - phone
+        - code
+      properties:
+        phone:
+          type: string
+        code:
+          type: string
+
+    PasswordLoginRequest:
+      type: object
+      required:
+        - phone
+        - password
+      properties:
+        phone:
+          type: string
+        password:
+          type: string
+
+    WechatLoginRequest:
+      type: object
+      required:
+        - code
+      properties:
+        code:
+          type: string
+        encrypted_data:
+          type: string
+        iv:
+          type: string
+
+    RegisterRequest:
+      type: object
+      required:
+        - phone
+        - code
+        - agreed
+      properties:
+        phone:
+          type: string
+        code:
+          type: string
+        password:
+          type: string
+        agreed:
+          type: boolean
+
+    LoginReply:
+      allOf:
+        - $ref: '#/components/schemas/BaseReply'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                token:
+                  type: string
+                user_info:
+                  $ref: '#/components/schemas/UserInfo'
+
+    UserInfo:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        phone:
+          type: string
+        nickname:
+          type: string
+        avatar_url:
+          type: string
+        wechat_openid:
+          type: string
+
+    RefreshReply:
+      allOf:
+        - $ref: '#/components/schemas/BaseReply'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                token:
+                  type: string
+
+    ResetPasswordRequest:
+      type: object
+      required:
+        - phone
+        - code
+        - new_password
+      properties:
+        phone:
+          type: string
+        code:
+          type: string
+        new_password:
+          type: string
+
+    ResetPasswordReply:
+      $ref: '#/components/schemas/BaseReply'
+
+    # 用户服务
+    GetProfileReply:
+      allOf:
+        - $ref: '#/components/schemas/BaseReply'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/ProfileData'
+
+    ProfileData:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        phone:
+          type: string
+        nickname:
+          type: string
+        avatar_url:
+          type: string
+        email:
+          type: string
+        gender:
+          type: integer
+          format: int32
+          description: 0-未知，1-男，2-女
+        birthday:
+          type: string
+        created_at:
+          type: string
+        updated_at:
+          type: string
+
+    UpdateProfileRequest:
+      type: object
+      properties:
+        nickname:
+          type: string
+        avatar_url:
+          type: string
+        email:
+          type: string
+        gender:
+          type: integer
+          format: int32
+        birthday:
+          type: string
+
+    UploadAvatarReply:
+      allOf:
+        - $ref: '#/components/schemas/BaseReply'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                avatar_url:
+                  type: string
+
+    ChangePasswordRequest:
+      type: object
+      required:
+        - old_password
+        - new_password
+      properties:
+        old_password:
+          type: string
+        new_password:
+          type: string
+
+    ChangePasswordReply:
+      $ref: '#/components/schemas/BaseReply'
+
+    BindPhoneRequest:
+      type: object
+      required:
+        - phone
+        - code
+      properties:
+        phone:
+          type: string
+        code:
+          type: string
+
+    BindPhoneReply:
+      allOf:
+        - $ref: '#/components/schemas/BaseReply'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                phone:
+                  type: string
+
+    GetSubscriptionReply:
+      allOf:
+        - $ref: '#/components/schemas/BaseReply'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/SubscriptionData'
+
+    SubscriptionData:
+      type: object
+      properties:
+        plan:
+          type: string
+          enum: [free, basic, premium]
+        status:
+          type: string
+          enum: [active, expired, cancelled]
+        expires_at:
+          type: string
+        features:
+          $ref: '#/components/schemas/SubscriptionFeatures'
+
+    SubscriptionFeatures:
+      type: object
+      properties:
+        unlimited_children:
+          type: boolean
+        unlimited_assignments:
+          type: boolean
+        advanced_reports:
+          type: boolean
+
+    UpdateSubscriptionRequest:
+      type: object
+      required:
+        - plan
+        - payment_method
+      properties:
+        plan:
+          type: string
+          enum: [basic, premium]
+        payment_method:
+          type: string
+          enum: [wechat, alipay]
+
+    UpdateSubscriptionReply:
+      allOf:
+        - $ref: '#/components/schemas/BaseReply'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                order_id:
+                  type: string
+                payment_url:
+                  type: string
+
+    # 儿童档案服务
+    ListChildrenReply:
+      allOf:
+        - $ref: '#/components/schemas/BaseReply'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/ChildData'
+
+    GetChildReply:
+      allOf:
+        - $ref: '#/components/schemas/BaseReply'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/ChildData'
+
+    CreateChildRequest:
+      type: object
+      required:
+        - name
+        - gender
+        - birth_date
+        - grade
+      properties:
+        name:
+          type: string
+        nickname:
+          type: string
+        gender:
+          type: integer
+          format: int32
+        birth_date:
+          type: string
+        grade:
+          type: string
+        avatar_url:
+          type: string
+        interests:
+          type: array
+          items:
+            type: string
+        custom_interests:
+          type: array
+          items:
+            type: string
+        learning_style:
+          type: string
+          enum: [visual, auditory, kinesthetic, reading]
+        attention_span:
+          type: integer
+          format: int32
+        weak_subjects:
+          type: array
+          items:
+            type: string
+
+    UpdateChildRequest:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        nickname:
+          type: string
+        gender:
+          type: integer
+          format: int32
+        birth_date:
+          type: string
+        grade:
+          type: string
+        avatar_url:
+          type: string
+        interests:
+          type: array
+          items:
+            type: string
+        custom_interests:
+          type: array
+          items:
+            type: string
+        learning_style:
+          type: string
+        attention_span:
+          type: integer
+          format: int32
+        weak_subjects:
+          type: array
+          items:
+            type: string
+
+    ChildData:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        nickname:
+          type: string
+        gender:
+          type: integer
+          format: int32
+        birth_date:
+          type: string
+        grade:
+          type: string
+        avatar_url:
+          type: string
+        interests:
+          type: array
+          items:
+            type: string
+        custom_interests:
+          type: array
+          items:
+            type: string
+        learning_style:
+          type: string
+        attention_span:
+          type: integer
+          format: int32
+        weak_subjects:
+          type: array
+          items:
+            type: string
+        learning_stats:
+          $ref: '#/components/schemas/LearningStats'
+        created_at:
+          type: string
+        updated_at:
+          type: string
+
+    LearningStats:
+      type: object
+      properties:
+        total_study_time:
+          type: integer
+          format: int64
+        completed_assignments:
+          type: integer
+          format: int32
+        average_score:
+          type: number
+          format: float
+        last_study_date:
+          type: string
+
+    DeleteChildReply:
+      $ref: '#/components/schemas/BaseReply'
+
+    # 作业服务
+    UploadImageRequest:
+      type: object
+      required:
+        - child_id
+      properties:
+        child_id:
+          type: integer
+          format: int64
+
+    UploadImageReply:
+      allOf:
+        - $ref: '#/components/schemas/BaseReply'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                id:
+                  type: integer
+                  format: int64
+
+    ScanRequest:
+      type: object
+      required:
+        - image_data
+        - child_id
+        - subject
+      properties:
+        image_data:
+          type: string
+          description: base64编码的图片数据或图片URL
+        child_id:
+          type: integer
+          format: int64
+        subject:
+          type: string
+
+    ScanReply:
+      allOf:
+        - $ref: '#/components/schemas/BaseReply'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                assignment_id:
+                  type: integer
+                  format: int64
+                status:
+                  type: string
+                  enum: [processing, complete, error]
+                progress:
+                  type: integer
+                  format: int32
+                estimated_time:
+                  type: integer
+                  format: int32
+
+    GetScanStatusReply:
+      allOf:
+        - $ref: '#/components/schemas/BaseReply'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/ScanStatusData'
+
+    ScanStatusData:
+      type: object
+      properties:
+        assignment_id:
+          type: integer
+          format: int64
+        status:
+          type: string
+        progress:
+          type: integer
+          format: int32
+        estimated_time:
+          type: integer
+          format: int32
+        questions:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuestionData'
+
+    GetAssignmentReply:
+      allOf:
+        - $ref: '#/components/schemas/BaseReply'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/AssignmentData'
+
+    AssignmentData:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        child_id:
+          type: integer
+          format: int64
+        subject:
+          type: string
+        grade:
+          type: string
+        original_images:
+          type: array
+          items:
+            type: string
+        questions:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuestionData'
+        generated_content:
+          $ref: '#/components/schemas/GeneratedContent'
+        status:
+          type: string
+        estimated_time:
+          type: integer
+          format: int32
+        actual_time:
+          type: integer
+          format: int32
+        score:
+          type: number
+          format: float
+        completed_at:
+          type: string
+        created_at:
+          type: string
+        updated_at:
+          type: string
+
+    QuestionData:
+      type: object
+      properties:
+        id:
+          type: string
+        question_number:
+          type: integer
+          format: int32
+        question_type:
+          type: string
+          enum: [multiple_choice, fill_blank, calculation, word_problem, essay]
+        original_text:
+          type: string
+        structured_data:
+          $ref: '#/components/schemas/StructuredData'
+        knowledge_points:
+          type: array
+          items:
+            $ref: '#/components/schemas/KnowledgePoint'
+        metadata:
+          $ref: '#/components/schemas/QuestionMetadata'
+        updated_at:
+          type: string
+
+    StructuredData:
+      type: object
+      properties:
+        stem:
+          type: string
+        options:
+          type: array
+          items:
+            $ref: '#/components/schemas/Option'
+        answer:
+          type: string
+        analysis:
+          type: string
+
+    Option:
+      type: object
+      properties:
+        option:
+          type: string
+        text:
+          type: string
+
+    KnowledgePoint:
+      type: object
+      properties:
+        subject:
+          type: string
+        topic:
+          type: string
+        subtopic:
+          type: string
+        difficulty:
+          type: string
+          enum: [easy, medium, hard]
+        confidence:
+          type: number
+          format: float
+        description:
+          type: string
+
+    QuestionMetadata:
+      type: object
+      properties:
+        word_count:
+          type: integer
+          format: int32
+        has_image:
+          type: boolean
+        has_formula:
+          type: boolean
+        confidence:
+          type: number
+          format: float
+
+    GeneratedContent:
+      type: object
+      properties:
+        story_id:
+          type: string
+        status:
+          type: string
+          enum: [pending, processing, completed, failed]
+
+    UpdateQuestionRequest:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        question_id:
+          type: string
+        original_text:
+          type: string
+        structured_data:
+          $ref: '#/components/schemas/StructuredData'
+        question_type:
+          type: string
+
+    UpdateQuestionReply:
+      allOf:
+        - $ref: '#/components/schemas/BaseReply'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/QuestionData'
+
+    SplitQuestionsRequest:
+      type: object
+      required:
+        - id
+        - questions
+      properties:
+        id:
+          type: integer
+          format: int64
+        questions:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuestionSplitData'
+
+    QuestionSplitData:
+      type: object
+      properties:
+        id:
+          type: string
+        question_number:
+          type: integer
+          format: int32
+        start_index:
+          type: integer
+          format: int32
+        end_index:
+          type: integer
+          format: int32
+
+    SplitQuestionsReply:
+      allOf:
+        - $ref: '#/components/schemas/BaseReply'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                questions:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/QuestionData'
+
+    UpdateQuestionTypeRequest:
+      type: object
+      required:
+        - id
+        - question_id
+        - question_type
+      properties:
+        id:
+          type: integer
+          format: int64
+        question_id:
+          type: string
+        question_type:
+          type: string
+
+    UpdateQuestionTypeReply:
+      allOf:
+        - $ref: '#/components/schemas/BaseReply'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                id:
+                  type: string
+                question_type:
+                  type: string
+                updated_at:
+                  type: string
+
+    GetKnowledgePointsReply:
+      allOf:
+        - $ref: '#/components/schemas/BaseReply'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/KnowledgePointsData'
+
+    KnowledgePointsData:
+      type: object
+      properties:
+        knowledge_points:
+          type: array
+          items:
+            $ref: '#/components/schemas/KnowledgePoint'
+
+    UpdateKnowledgePointsRequest:
+      type: object
+      required:
+        - id
+        - question_id
+        - knowledge_points
+      properties:
+        id:
+          type: integer
+          format: int64
+        question_id:
+          type: string
+        knowledge_points:
+          type: array
+          items:
+            $ref: '#/components/schemas/KnowledgePoint'
+
+    UpdateKnowledgePointsReply:
+      allOf:
+        - $ref: '#/components/schemas/BaseReply'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/KnowledgePointsData'
+
+    UpdateAssignmentRequest:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        subject:
+          type: string
+        urgency:
+          type: string
+          enum: [low, medium, high]
+        notes:
+          type: string
+        questions:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuestionData'
+        status:
+          type: string
+
+    UpdateAssignmentReply:
+      allOf:
+        - $ref: '#/components/schemas/BaseReply'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/AssignmentData'
+
+    DeleteQuestionReply:
+      $ref: '#/components/schemas/BaseReply'
+
+    GenerateContentRequest:
+      type: object
+      required:
+        - assignment_id
+      properties:
+        assignment_id:
+          type: integer
+          format: int64
+
+    GenerateContentReply:
+      allOf:
+        - $ref: '#/components/schemas/BaseReply'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                content_id:
+                  type: string
+                status:
+                  type: string
+
+    GetGenerateStatusRequest:
+      type: object
+      required:
+        - assignment_id
+      properties:
+        assignment_id:
+          type: integer
+          format: int64
+
+    GetGenerateStatusReply:
+      allOf:
+        - $ref: '#/components/schemas/BaseReply'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                content_id:
+                  type: string
+                status:
+                  type: string
+                progress:
+                  type: integer
+                  format: int32
+                estimated_time:
+                  type: integer
+                  format: int32
+                story_id:
+                  type: string
+
+    ListAssignmentsRequest:
+      type: object
+      properties:
+        child_id:
+          type: integer
+          format: int64
+        status:
+          type: string
+        subject:
+          type: string
+        page:
+          type: integer
+          format: int32
+        page_size:
+          type: integer
+          format: int32
+
+    ListAssignmentsReply:
+      allOf:
+        - $ref: '#/components/schemas/BaseReply'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                list:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/AssignmentListItem'
+                total:
+                  type: integer
+                  format: int64
+                page:
+                  type: integer
+                  format: int32
+                page_size:
+                  type: integer
+                  format: int32
+
+    AssignmentListItem:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        child_id:
+          type: integer
+          format: int64
+        subject:
+          type: string
+        status:
+          type: string
+        created_at:
+          type: string

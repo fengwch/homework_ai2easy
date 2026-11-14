@@ -1,0 +1,151 @@
+<template>
+  <view v-if="visible" class="avatar-sheet-mask" @click="onCancel">
+    <view class="avatar-sheet" @click.stop>
+      <!-- 微信 2022.11 起 getUserProfile 返回“微信用户”和灰头像，改用 button open-type="chooseAvatar" 获取真实头像 -->
+      <button
+        class="sheet-option sheet-option-btn"
+        open-type="chooseAvatar"
+        @chooseavatar="onChooseAvatar"
+      >
+        <image
+          v-if="wechatAvatarUrl"
+          :src="wechatAvatarUrl"
+          class="option-icon option-avatar"
+          mode="aspectFill"
+        />
+        <text v-else class="option-icon option-emoji">👤</text>
+        <text class="option-text">用微信头像</text>
+      </button>
+      <view class="sheet-option sheet-option-no-icon" @click="onAlbum">
+        <text class="option-text">从相册选择</text>
+      </view>
+      <view class="sheet-option sheet-option-no-icon" @click="onCamera">
+        <text class="option-text">拍照</text>
+      </view>
+      <view class="sheet-cancel" @click="onCancel">取消</view>
+    </view>
+  </view>
+</template>
+
+<script setup lang="uts">
+const props = defineProps<{
+  visible: boolean
+  wechatAvatarUrl?: string
+}>()
+
+const emit = defineEmits<{
+  (e: 'avatarChosen', tempPath: string): void
+  (e: 'album'): void
+  (e: 'camera'): void
+  (e: 'cancel'): void
+}>()
+
+function onChooseAvatar(e: { detail: { avatarUrl: string } }) {
+  const tempPath = e?.detail?.avatarUrl
+  if (tempPath) {
+    emit('avatarChosen', tempPath)
+  }
+}
+
+function onAlbum() {
+  emit('album')
+}
+
+function onCamera() {
+  emit('camera')
+}
+
+function onCancel() {
+  emit('cancel')
+}
+</script>
+
+<style scoped lang="scss">
+.avatar-sheet-mask {
+  position: fixed;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 9998;
+  display: flex;
+  align-items: flex-end;
+}
+
+.avatar-sheet {
+  width: 100%;
+  background: #fff;
+  border-radius: 24rpx 24rpx 0 0;
+  padding: 24rpx 32rpx;
+  padding-bottom: calc(env(safe-area-inset-bottom) + 24rpx);
+}
+
+.sheet-option {
+  display: flex;
+  align-items: center;
+  padding: 32rpx;
+  border-bottom: 2rpx solid #f5f5f5;
+}
+
+.sheet-option-btn {
+  width: 100%;
+  margin: 0;
+  padding: 32rpx;
+  background: #fff;
+  border: none;
+  border-radius: 0;
+  text-align: left;
+  line-height: inherit;
+}
+
+.sheet-option-btn::after {
+  border: none;
+}
+
+.sheet-option:active {
+  background: #f9f9f9;
+}
+
+.option-icon {
+  width: 64rpx;
+  height: 64rpx;
+  margin-right: 24rpx;
+  flex-shrink: 0;
+}
+
+.option-avatar {
+  border-radius: 50%;
+  background: #f0f0f0;
+}
+
+.option-emoji {
+  font-size: 48rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.option-text {
+  font-size: 30rpx;
+  color: #333;
+}
+
+.sheet-option-no-icon .option-text {
+  margin-left: 0;
+}
+
+.sheet-cancel {
+  margin-top: 16rpx;
+  padding: 28rpx;
+  text-align: center;
+  font-size: 30rpx;
+  color: #999;
+  background: #f5f5f5;
+  border-radius: 12rpx;
+}
+
+.sheet-cancel:active {
+  background: #eee;
+}
+</style>

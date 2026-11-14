@@ -1,0 +1,110 @@
+<template>
+  <view class="child-switcher" v-if="props.children.length > 0">
+    <view v-if="expanded" class="switcher-overlay" @click="expanded = false" />
+    <view class="switcher-trigger" @click="toggle">
+      <text class="switcher-label">{{ currentChild?.name || '选择孩子' }}</text>
+      <text class="switcher-arrow">{{ expanded ? '▲' : '▼' }}</text>
+    </view>
+    <view v-if="expanded" class="switcher-dropdown">
+      <view
+        v-for="c in children"
+        :key="c.id"
+        class="dropdown-item"
+        :class="{ active: props.currentChildId != null && String(props.currentChildId) === String(c.id) }"
+        @click="select(c.id)"
+      >
+        <text>{{ c.name }}</text>
+      </view>
+    </view>
+  </view>
+</template>
+
+<script setup lang="uts">
+import type { Child } from '@/api/child'
+
+const props = defineProps<{
+  children: Child[]
+  currentChildId: number | string | null
+}>()
+
+const emit = defineEmits<{
+  (e: 'change', id: number | string): void
+}>()
+
+const expanded = ref(false)
+
+const currentChild = computed(() => {
+  if (props.currentChildId == null) return null
+  const id = String(props.currentChildId)
+  return props.children.find(c => String(c.id) === id) || null
+})
+
+function toggle() {
+  expanded.value = !expanded.value
+}
+
+function select(id: number | string) {
+  emit('change', id)
+  expanded.value = false
+}
+</script>
+
+<style scoped lang="scss">
+.child-switcher {
+  position: relative;
+  min-width: 160rpx;
+}
+
+.switcher-overlay {
+  position: fixed;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 99;
+}
+
+.switcher-trigger {
+  display: flex;
+  align-items: center;
+  padding: 16rpx 24rpx;
+  background: #f5f5f5;
+  border-radius: 12rpx;
+}
+
+.switcher-label {
+  font-size: 28rpx;
+  color: #333;
+  flex: 1;
+}
+
+.switcher-arrow {
+  font-size: 20rpx;
+  color: #999;
+  margin-left: 8rpx;
+}
+
+.switcher-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 8rpx;
+  background: #fff;
+  border-radius: 12rpx;
+  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.12);
+  z-index: 100;
+  overflow: hidden;
+}
+
+.dropdown-item {
+  padding: 24rpx;
+  font-size: 28rpx;
+  color: #333;
+}
+
+.dropdown-item.active {
+  background: #f0f0ff;
+  color: #667eea;
+}
+</style>

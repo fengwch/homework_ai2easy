@@ -1,0 +1,588 @@
+<template>
+  <view class="container">
+    <view class="header">
+      <text class="title">{{ printTitle }}</text>
+    </view>
+
+    <scroll-view scroll-y class="preview-content">
+      <!-- 学习材料（storyId 时） -->
+      <view v-if="contentTitle" class="print-page">
+        <view class="page-item story-header">
+          <text class="story-title">{{ contentTitle }}</text>
+          <text v-if="contentSummary" class="story-summary">{{ contentSummary }}</text>
+        </view>
+        <!-- 故事配图：show-menu-by-longpress 长按出系统菜单含「保存图片」；点击预览后亦可长按保存 -->
+        <view v-if="contentImages.length > 0" class="page-item story-images">
+          <image
+            v-for="(img, idx) in contentImages"
+            :key="idx"
+            :src="img"
+            mode="widthFix"
+            class="story-image"
+            show-menu-by-longpress="true"
+            @click="openImagePreview(idx, contentImages)"
+            @longpress="saveImageToPhone(img)"
+          />
+        </view>
+        <view class="page-item story-body">
+          <text class="story-text">{{ contentStory }}</text>
+        </view>
+        <view
+          v-for="(q, index) in contentQuestions"
+          :key="index"
+          class="page-item question-item"
+        >
+          <text class="q-label">第{{ index + 1 }}题</text>
+          <text class="q-content">{{ q.content }}</text>
+          <text v-if="q.options && q.options.length" class="q-options">{{ q.options.join('  ') }}</text>
+        </view>
+      </view>
+      <!-- 作业图片/题目（无 storyId 时） -->
+      <view v-else class="print-page">
+        <view
+          v-for="(page, index) in pages"
+          :key="index"
+          class="page-item"
+        >
+          <image
+            v-if="page.image"
+            :src="page.image"
+            mode="widthFix"
+            class="page-image"
+            show-menu-by-longpress="true"
+            @click="openImagePreview(getAssignmentImageIndex(index), assignmentImageList)"
+            @longpress="saveImageToPhone(page.image)"
+          />
+          <text v-if="page.text" class="page-text">{{ page.text }}</text>
+        </view>
+      </view>
+    </scroll-view>
+
+    <view class="footer">
+      <!-- 小程序：有图片时显示长按保存指引 -->
+      <view v-if="isMp && hasImages && !contentTitle" class="save-tip">
+        <text class="save-tip-text">📷 长按图片可保存到相册，或点击图片预览后长按保存</text>
+      </view>
+      <view v-if="!isMp" class="settings">
+        <view class="setting-item">
+          <text class="setting-label">打印份数</text>
+          <picker :value="copiesIndex" :range="copiesOptions" @change="onCopiesChange">
+            <view class="picker-view">{{ copies }}份</view>
+          </picker>
+        </view>
+        <view class="setting-item">
+          <text class="setting-label">打印模式</text>
+          <picker :value="modeIndex" :range="modeOptions" @change="onModeChange">
+            <view class="picker-view">{{ mode }}</view>
+          </picker>
+        </view>
+      </view>
+      <button
+        class="print-btn"
+        :disabled="exportPdfLoading"
+        @click="onPrintBtnClick"
+      >
+        {{ exportPdfLoading ? '导出中...' : '导出 PDF' }}
+      </button>
+    </view>
+  </view>
+</template>
+
+<script setup lang="uts">
+import { ref, computed, onMounted, getCurrentInstance } from 'vue'
+import { fetchAssignmentDetail } from '@/api/assignment'
+import { fetchLearningContent, requestLearningContentPdf } from '@/api/content'
+import type { AssignmentDetail } from '@/api/assignment'
+import { resolveResourceUrl } from '@/utils/image'
+// jspdf 依赖浏览器/Node 环境，小程序中会报 bind undefined，不在本文件做静态 import
+
+const pages = ref<Array<{ image?: string; text?: string }>>([])
+const contentTitle = ref('')
+const contentSummary = ref('')
+const contentStory = ref('')
+const contentImages = ref<string[]>([])
+const contentQuestions = ref<Array<{ content: string; options?: string[] }>>([])
+const storyIdForExport = ref('')
+const exportPdfLoading = ref(false)
+const isMp = ref(false)
+// wxml-to-canvas 画布尺寸（小程序用其将页面转为图片）
+const copies = ref(1)
+const mode = ref('彩色')
+const copiesIndex = ref(0)
+const modeIndex = ref(0)
+
+const copiesOptions = ['1', '2', '3', '4', '5']
+const modeOptions = ['彩色', '黑白']
+
+const printTitle = computed(() => contentTitle.value ? `打印：${contentTitle.value}` : '打印预览')
+
+/** 当前页是否有图片（学习材料配图或作业页图片），用于显示长按保存指引 */
+const hasImages = computed(() => {
+  if (contentImages.value.length > 0) return true
+  return pages.value.some((p) => !!p.image)
+})
+
+/** 作业页中的图片 URL 列表（用于 previewImage） */
+const assignmentImageList = computed(() =>
+  pages.value.map((p) => p.image).filter((x): x is string => !!x)
+)
+
+/** 打开图片预览（wx.previewImage / uni.previewImage），预览界面长按可保存 */
+function openImagePreview(currentIndex: number, urls: string[]) {
+  if (!urls || urls.length === 0) return
+  const current = urls[Math.min(currentIndex, urls.length - 1)]
+  uni.previewImage({
+    current,
+    urls
+  })
+}
+
+/** 作业页中某页在「仅图片」列表中的下标 */
+function getAssignmentImageIndex(pageIndex: number): number {
+  return pages.value.slice(0, pageIndex).filter((p) => !!p.image).length
+}
+
+/** 长按图片保存到相册：网络图先下载到临时文件再保存（兜底，与 show-menu-by-longpress 并存） */
+function saveImageToPhone(url: string) {
+  if (!url) return
+  const isNetwork = url.startsWith('http://') || url.startsWith('https://')
+  const doSave = (filePath: string) => {
+    uni.saveImageToPhotosAlbum({
+      filePath,
+      success() {
+        uni.showToast({ title: '已保存到相册', icon: 'success' })
+      },
+      fail(err) {
+        const msg = (err as any).errMsg || ''
+        if (msg.indexOf('auth') !== -1 || msg.indexOf('authorize') !== -1) {
+          uni.showToast({ title: '请授权保存到相册', icon: 'none', duration: 2500 })
+        } else {
+          uni.showToast({ title: '保存失败', icon: 'none' })
+        }
+      }
+    })
+  }
+  if (isNetwork) {
+    uni.downloadFile({
+      url,
+      success(res) {
+        if (res.statusCode === 200 && res.tempFilePath) doSave(res.tempFilePath)
+        else uni.showToast({ title: '保存失败', icon: 'none' })
+      },
+      fail() {
+        uni.showToast({ title: '保存失败', icon: 'none' })
+      }
+    })
+  } else {
+    doSave(url)
+  }
+}
+
+onMounted(() => {
+  const si = uni.getSystemInfoSync()
+  const platform = (si.uniPlatform != null ? si.uniPlatform : (si as any).platform) || ''
+  isMp.value = (platform === 'mp-weixin' || String(platform).indexOf('weixin') !== -1)
+  loadData()
+})
+
+function loadData() {
+  const pages = getCurrentPages()
+  const currentPage = pages[pages.length - 1]
+  const options = currentPage.options || {}
+  const storyId = options.storyId || options.id || ''
+  const assignmentId = parseInt(options.assignmentId || '0')
+  
+  if (storyId) {
+    storyIdForExport.value = storyId
+    fetchLearningContent(storyId)
+      .then((data) => {
+        contentTitle.value = data.title || '学习材料'
+        contentSummary.value = data.summary || ''
+        contentStory.value = data.story || ''
+        contentImages.value = data.images || []
+        contentQuestions.value = (data.questions || []).map(q => ({
+          content: q.content,
+          options: q.options
+        }))
+      })
+      .catch((err) => {
+        console.error('加载学习材料失败:', err)
+        uni.showToast({ title: '加载失败', icon: 'none' })
+      })
+  } else if (assignmentId) {
+    storyIdForExport.value = ''
+    fetchAssignmentDetail(assignmentId)
+      .then((data: AssignmentDetail) => {
+        const imgs = (data as any).originalImages ?? (data as any).original_images ?? []
+        const qs = data.questions || []
+        if (Array.isArray(imgs) && imgs.length > 0) {
+          pages.value = imgs.map((img: string) => ({ image: resolveResourceUrl(img) }))
+        } else if (qs.length > 0) {
+          pages.value = qs.map(q => ({
+            text: (q as any).originalText ?? (q as any).original_text ?? ''
+          }))
+        }
+      })
+      .catch((err) => {
+        console.error('加载数据失败:', err)
+        uni.showToast({ title: '加载失败', icon: 'none' })
+      })
+  } else {
+    uni.showToast({ title: '参数无效', icon: 'none' })
+  }
+}
+
+function onCopiesChange(e: any) {
+  copiesIndex.value = e.detail.value
+  copies.value = parseInt(copiesOptions[e.detail.value])
+}
+
+function onModeChange(e: any) {
+  modeIndex.value = e.detail.value
+  mode.value = modeOptions[e.detail.value]
+}
+
+function onPrintBtnClick() {
+  handlePrimaryAction()
+}
+
+function handlePrimaryAction() {
+  handlePrint()
+}
+
+// #ifndef MP-WEIXIN
+/** 将图片 URL 下载并转为 data URL（base64），供前端 PDF 使用 */
+function downloadImageToBase64(url: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    uni.downloadFile({
+      url,
+      success(res) {
+        if (res.statusCode !== 200 || !res.tempFilePath) {
+          reject(new Error('download fail'))
+          return
+        }
+        const fs = uni.getFileSystemManager()
+        fs.readFile({
+          filePath: res.tempFilePath,
+          encoding: 'base64',
+          success(reader) {
+            const base64 = (reader as any).data
+            const isPng = url.indexOf('.png') !== -1 || url.indexOf('png') !== -1
+            const dataUrl = isPng ? `data:image/png;base64,${base64}` : `data:image/jpeg;base64,${base64}`
+            resolve(dataUrl)
+          },
+          fail: reject
+        })
+      },
+      fail: reject
+    })
+  })
+}
+
+function handleExportPdf() {
+  if (!contentTitle.value) {
+    uni.showToast({ title: '仅学习材料支持导出 PDF', icon: 'none' })
+    return
+  }
+  exportPdfLoading.value = true
+  const imgUrls = contentImages.value || []
+  const imagesPromise = imgUrls.length > 0
+    ? Promise.all(imgUrls.map((url: string) => downloadImageToBase64(url).catch(() => '')))
+    : Promise.resolve([] as string[])
+  imagesPromise
+    .then((imagesBase64) => {
+      return (import('@/utils/pdfExport') as Promise<{ buildLearningContentPdf: (data: any) => Promise<string> }>).then((m) =>
+        m.buildLearningContentPdf({
+          title: contentTitle.value,
+          summary: contentSummary.value,
+          story: contentStory.value,
+          imagesBase64: imagesBase64.filter((s: string) => s !== ''),
+          questions: contentQuestions.value
+        })
+      )
+    })
+    .then((pdfBase64) => {
+      if (!pdfBase64) {
+        uni.showToast({ title: '导出失败', icon: 'none' })
+        return
+      }
+      const fs = uni.getFileSystemManager()
+      const wxObj = (typeof globalThis !== 'undefined' && (globalThis as any).wx) ? (globalThis as any).wx : null
+      const dir = (wxObj && wxObj.env && wxObj.env.USER_DATA_PATH) ? wxObj.env.USER_DATA_PATH : ''
+      const filePath = dir ? `${dir}/learning_${Date.now()}.pdf` : `learning_${Date.now()}.pdf`
+      fs.writeFile({
+        filePath,
+        data: pdfBase64,
+        encoding: 'base64',
+        success() {
+          uni.openDocument({
+            filePath,
+            fileType: 'pdf',
+            showMenu: true,
+            success() {
+              uni.showToast({ title: '已打开文档', icon: 'none' })
+            },
+            fail(e) {
+              console.error('openDocument fail:', e)
+              uni.showToast({ title: '打开失败', icon: 'none' })
+            }
+          })
+        },
+        fail(err) {
+          console.error('writeFile fail:', err)
+          uni.showToast({ title: '保存失败', icon: 'none' })
+        }
+      })
+    })
+    .catch((err) => {
+      console.error('buildLearningContentPdf fail:', err)
+      uni.showToast({ title: '导出失败', icon: 'none' })
+    })
+    .finally(() => {
+      exportPdfLoading.value = false
+  console.log('[print/preview] handleExportPdf finally')
+    })
+}
+// #endif
+
+function handlePrint() {
+  // #ifdef MP-WEIXIN
+  handleMpPrint()
+  // #endif
+  // #ifdef APP-PLUS
+  uni.showToast({ title: '打印功能开发中', icon: 'none' })
+  // #endif
+  // #ifdef H5
+  window.print()
+  // #endif
+  // #ifndef APP-PLUS || H5 || MP-WEIXIN
+  uni.showToast({ title: '当前平台不支持打印', icon: 'none' })
+  // #endif
+}
+
+// #ifdef MP-WEIXIN
+function handleMpPrint() {
+  const sid = storyIdForExport.value
+  if (!sid) {
+    uni.showToast({ title: '仅学习材料支持导出 PDF', icon: 'none' })
+    return
+  }
+  exportPdfLoading.value = true
+  uni.showLoading({ title: '生成中...' })
+
+  requestLearningContentPdf(sid).then((res: { url: string }) => {
+    const url = res?.url || ''
+    if (!url) {
+      uni.hideLoading()
+      exportPdfLoading.value = false
+      uni.showToast({ title: '生成失败', icon: 'none' })
+      return
+    }
+    uni.downloadFile({
+      url,
+      success(dlRes) {
+        uni.hideLoading()
+        exportPdfLoading.value = false
+        if (dlRes.statusCode === 200 && dlRes.tempFilePath) {
+          uni.openDocument({
+            filePath: dlRes.tempFilePath,
+            fileType: 'pdf',
+            showMenu: true,
+            success() {
+              uni.showToast({ title: '已打开文档', icon: 'none' })
+            },
+            fail(e) {
+              console.error('openDocument fail:', e)
+              uni.showToast({ title: '打开失败', icon: 'none' })
+            }
+          })
+        } else {
+          uni.showToast({ title: '下载失败', icon: 'none' })
+        }
+      },
+      fail(err) {
+        uni.hideLoading()
+        exportPdfLoading.value = false
+        console.error('downloadFile fail:', err)
+        uni.showToast({ title: '下载失败', icon: 'none' })
+      }
+    })
+  }).catch((err) => {
+    uni.hideLoading()
+    exportPdfLoading.value = false
+    console.error('requestLearningContentPdf fail:', err)
+    uni.showToast({ title: '导出失败', icon: 'none' })
+  })
+}
+// #endif
+</script>
+
+<style scoped lang="scss">
+.container {
+  width: 100%;
+  height: 100vh;
+  background: #f5f5f5;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  padding: 32rpx;
+  background: #fff;
+  border-bottom: 2rpx solid #f5f5f5;
+}
+
+.title {
+  font-size: 40rpx;
+  font-weight: bold;
+  color: #333;
+}
+
+.preview-content {
+  flex: 1;
+  padding: 32rpx;
+}
+
+.print-page {
+  background: #fff;
+  padding: 40rpx;
+  border-radius: 8rpx;
+}
+
+.page-item {
+  margin-bottom: 40rpx;
+  page-break-after: always;
+}
+
+.page-image {
+  width: 100%;
+  border-radius: 8rpx;
+}
+
+.page-text {
+  font-size: 28rpx;
+  color: #333;
+  line-height: 1.8;
+  display: block;
+}
+
+.story-header {
+  margin-bottom: 32rpx;
+}
+
+.story-title {
+  font-size: 36rpx;
+  font-weight: bold;
+  color: #333;
+  display: block;
+  margin-bottom: 16rpx;
+}
+
+.story-summary {
+  font-size: 26rpx;
+  color: #666;
+  line-height: 1.6;
+  display: block;
+}
+
+.story-images {
+  margin-bottom: 32rpx;
+}
+
+.story-image {
+  width: 100%;
+  display: block;
+  margin-bottom: 24rpx;
+  border-radius: 8rpx;
+}
+
+.story-body {
+  margin-bottom: 32rpx;
+}
+
+.story-text {
+  font-size: 28rpx;
+  color: #333;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  display: block;
+}
+
+.question-item {
+  padding: 24rpx 0;
+  border-top: 2rpx solid #eee;
+}
+
+.q-label {
+  font-size: 24rpx;
+  color: #667eea;
+  display: block;
+  margin-bottom: 8rpx;
+}
+
+.q-content {
+  font-size: 28rpx;
+  color: #333;
+  line-height: 1.6;
+  display: block;
+}
+
+.q-options {
+  font-size: 26rpx;
+  color: #666;
+  display: block;
+  margin-top: 8rpx;
+}
+
+.save-tip {
+  padding: 24rpx 32rpx;
+  text-align: center;
+}
+
+.save-tip-text {
+  font-size: 26rpx;
+  color: #666;
+}
+
+.footer {
+  padding: 24rpx 32rpx;
+  background: #fff;
+  border-top: 2rpx solid #f5f5f5;
+}
+
+.settings {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 24rpx;
+}
+
+.setting-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.setting-label {
+  font-size: 24rpx;
+  color: #999;
+  margin-bottom: 12rpx;
+}
+
+.picker-view {
+  padding: 12rpx 24rpx;
+  background: #f5f5f5;
+  border-radius: 8rpx;
+  font-size: 26rpx;
+  color: #333;
+}
+
+.print-btn {
+  width: 100%;
+  height: 88rpx;
+  background: #667eea;
+  color: #fff;
+  border-radius: 12rpx;
+  font-size: 32rpx;
+  border: none;
+}
+</style>

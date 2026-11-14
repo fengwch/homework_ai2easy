@@ -1,0 +1,82 @@
+<template>
+  <view class="tab-bar">
+    <view class="tab-item" :class="{ active: current === 'home' }" @click="goHome">
+      <text class="tab-icon">🏠</text>
+      <text class="tab-text">首页</text>
+    </view>
+    <view class="tab-item tab-add" :class="{ active: current === 'add' }" @click="goAdd">
+      <text class="tab-icon">➕</text>
+      <text class="tab-text">添加小孩</text>
+    </view>
+    <view class="tab-item" :class="{ active: current === 'profile' }" @click="goProfile">
+      <text class="tab-icon">👤</text>
+      <text class="tab-text">我的</text>
+    </view>
+  </view>
+</template>
+
+<script setup lang="uts">
+withDefaults(defineProps<{
+  current?: 'home' | 'add' | 'profile'
+}>(), { current: 'home' })
+
+function goHome() {
+  uni.reLaunch({ url: '/pages/child/list' })
+}
+
+function goAdd() {
+  uni.navigateTo({ url: '/pages/child/edit?mode=create' })
+}
+
+function goProfile() {
+  uni.reLaunch({ url: '/pages/profile/index' })
+}
+</script>
+
+<style scoped lang="scss">
+.tab-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 180rpx;
+  padding-bottom: env(safe-area-inset-bottom);
+  background: #fff;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-around;
+  border-top: 2rpx solid #f0f0f0;
+  z-index: 1000;
+}
+
+.tab-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  padding: 12rpx 0;
+}
+
+.tab-icon {
+  font-size: 44rpx;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.tab-add .tab-icon {
+  font-size: 48rpx;
+}
+
+.tab-text {
+  font-size: 22rpx;
+  color: #999;
+}
+
+.tab-item.active .tab-icon,
+.tab-item.active .tab-text {
+  color: #667eea;
+}
+</style>

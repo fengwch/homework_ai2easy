@@ -1,0 +1,246 @@
+# 项目 Cursor 规则：AI Agent 开发工具与约定
+
+# 重要规则
+- 写代码前必须完整阅读 memory-bank/ 下的所有文档。
+- 代码必须模块化，禁止创建巨型单体文件。
+- 每完成一个功能，必须更新 architecture.md 和 progress.md。
+- 保持代码简洁，遵循单一职责原则。
+
+## 长期记忆
+在项目根目录创建 memory-bank/文件夹，存放核心文档，作为AI的长期记忆
+```
+memory-bank/
+├── 0-project-brief.md          # 项目宪章（最稳定）
+├── 1-tech-stack.md             # 技术栈与约束
+├── 2-implementation-plan.md    # 动态计划（持续更新）
+├── 3-architecture.md           # 架构与决策记录
+├── 4-progress.md               # 进度追踪
+└── 5-decision-log.md           # 关键决策日志
+```
+### **三、各文档详细说明与模板**
+
+#### **1. `0-project-brief.md` （项目宪章）**
+*   **目的**：定义项目的“是什么”和“为什么”，是最高层、最稳定的指导文件。
+*   **内容模板**：
+    ```markdown
+    # 项目宪章
+
+    ## 核心目标
+    - **一句话描述**：[用一句话清晰说明项目要做什么]
+    - **核心价值**：[解决什么用户的什么痛点？带来什么价值？]
+
+    ## 范围与边界
+    - **版本1.0必须包含的功能**：
+        1.  [功能A]
+        2.  [功能B]
+    - **明确排除在1.0之外的功能**：
+        1.  [功能X] （原因：复杂度高，可后续迭代）
+        2.  [功能Y]
+
+    ## 用户与场景
+    - **主要用户**：[例如：内容创作者]
+    - **核心用户故事**：
+        1.  作为[用户角色]，我希望[达成目标]，以便[获得价值]。
+        2.  ...
+
+    ## 成功标准
+    - [上线并稳定运行]
+    - [日活跃用户达到X]
+    - [核心功能页面加载时间 < 2秒]
+    ```
+*   **更新时机**：仅在项目目标发生根本性变化时更新。
+
+#### **2. `1-tech-stack.md` （技术栈与约束）**
+*   **目的**：定义项目的“技术宪法”，是AI写代码时必须遵守的规则。
+*   **内容模板**：
+    ```markdown
+    # 技术栈与开发约束
+
+    ## 强制技术栈
+    - **前端**：xxx
+    - **后端**：xxx
+    - **数据库**：xxx
+    - **包管理器**：xxx
+
+    ## 代码规范
+    - 使用 ESLint (Airbnb配置) 和 Prettier。
+    - API响应必须遵循 `{ data: ..., error: null }` 格式。
+
+    ## 绝对禁止项
+    - 禁止使用 `any` 类型xxxx。
+    - 禁止在前端直接写SQL查询。
+    - 禁止引入未经团队评估的新大型依赖。
+    ```
+*   **更新时机**：技术选型变更时。
+
+#### **3. `2-implementation-plan.md` （动态实施计划）**
+*   **目的**：将宏大目标拆解为可执行、可验证的原子任务。**这是最常被AI阅读的文件**。
+*   **内容模板**：
+    ```markdown
+    # 实施计划 (v1.0)
+
+    ## 阶段一：项目初始化与认证系统
+    - [x] **任务1.1**：初始化前后端项目结构，配置基础工具链。
+        - 验收标准：项目能成功运行 `pnpm dev` 和 `poetry run dev`。
+    - [ ] **任务1.2**：实现用户注册/登录API（JWT）。
+        - 验收标准：能通过Postman成功注册、登录并获取Token。
+    - [ ] **任务1.3**：实现前端登录页面及Token管理。
+        - 验收标准：在浏览器中能完成登录流程，Token被安全存储。
+
+    ## 阶段二：核心功能开发
+    - [ ] **任务2.1**：设计并创建博客文章的数据表。
+    - [ ] **任务2.2**：实现文章的CRUD后端API。
+    ...
+    ```
+*   **更新时机**：**持续更新**。每完成一个任务，立即标记为 `[x]`，并可以细化后续任务。
+
+#### **4. `3-architecture.md` （架构与决策记录）**
+*   **目的**：记录随着开发进行而产生的具体设计决策和代码结构，是项目的“地图”。
+*   **内容模板**：
+    ```markdown
+    # 系统架构
+
+    ## 目录结构说明
+    ```
+    /src
+    ├── /frontend
+    │   ├── /components   # 通用组件
+    │   ├── /pages        # 页面组件
+    │   └── /lib          # 前端工具函数、API客户端
+    └── /backend
+        ├── /api          # 路由层
+        ├── /services     # 业务逻辑层
+        ├── /models       # 数据模型层
+        └── /core         # 核心配置
+    ```
+
+    ## 核心设计决策
+    - **2024-01-15：选择JWT而非Session进行认证**
+        - 原因：项目需要简单的无状态API，且后续可能涉及移动端。
+        - 影响：所有受保护API需在Header中验证 `Authorization: Bearer <token>`。
+    - **2024-01-16：前端状态管理选择Zustand而非Redux**
+        - 原因：代码更简洁，学习曲线低，满足当前项目复杂度。
+        - 相关文件：`/src/frontend/lib/store/useAuthStore.ts`
+    ```
+*   **更新时机**：每当做出重要的技术或架构选择时，立即记录。
+
+#### **5. `4-progress.md` （进度追踪）**
+*   **目的**：记录当前工作焦点、已完成的工作和遇到的阻塞问题。
+*   **内容模板**：
+    ```markdown
+    # 进度追踪
+
+    ## 当前工作焦点 (2024-01-20)
+    - 正在实现 **任务2.2：文章的CRUD后端API**。
+    - 负责人：AI（开发者监督）。
+    - 相关文件：xxxx
+
+    ## 今日已完成
+    - 完成了用户登录前端页面的样式优化。
+    - 修复了JWT令牌刷新机制的Bug。
+
+    ## 已知问题/阻塞
+    - 图片上传API的速率限制策略尚未确定，需参考 `decision-log.md#3`。
+    - 暂无。
+    ```
+*   **更新时机**：**每日或每项任务变更时更新**。这是项目的“实时状态仪表盘”。
+
+#### **6. `5-decision-log.md` （关键决策日志）**
+*   **目的**：记录所有“为什么这么做”的讨论和结论，避免历史被遗忘和重复讨论。
+*   **内容模板**：
+    ```markdown
+    # 关键决策日志
+
+    ## 决策 #1：数据库选型
+    - **日期**：2024-01-10
+    - **问题**：选择关系型数据库还是文档数据库？
+    - **选项**：
+        - A: PostgreSQL
+        - B: MongoDB
+    - **决策**：选择A (PostgreSQL)
+    - **原因**：数据结构稳定，需要复杂查询和事务支持（如用户积分系统）。
+    - **决策人**：[开发者姓名]
+
+    ## 决策 #2：前端框架选型
+    ...
+    ```
+
+## 一、本项目使用的 AI Agent 开发工具
+
+### 1. LangChain 生态（核心编排）
+- **langchain** / **langchain-core** / **langchain-community** (>=1.0)：链与组件基类
+- **langchain-text-splitters**：文档分割（RecursiveCharacterTextSplitter）
+- **LCEL（LangChain Expression Language）**：使用 `|` 管道符组装 Runnable 链，见 `qa_system.py` 中 `retriever | format_docs`、`qa_prompt | model | StrOutputParser()`
+- 文档与消息类型：`langchain_core.documents.Document`、`HumanMessage`/`AIMessage`、`ChatPromptTemplate`、`MessagesPlaceholder`
+
+### 2. LLM 与嵌入
+- **langchain-dashscope** / **langchain_community.chat_models.ChatTongyi**：Qwen 系列模型（qwen-plus / qwen-turbo）
+- **langchain_community.embeddings.DashScopeEmbeddings**：文本向量化（text-embedding-v2），备用为 **langchain_openai** + DashScope 兼容 endpoint
+- API 密钥与模型名通过 `.env` 的 `DASHSCOPE_API_KEY`、`MODEL_NAME` 配置
+
+### 3. 向量存储与检索
+- **langchain-milvus** / **pymilvus**：向量库，封装在 `vector_store.py` 的 `MilvusVectorStore`
+- **Milvus** 由 `milvus-standalone-docker-compose.yml` 部署（etcd + MinIO + standalone + Attu）
+- 检索入口：`vector_store.as_retriever(search_kwargs={"k": 4})`，与 LCEL 链配合使用
+
+### 4. LangGraph（图/Agent）
+- **langgraph** / **langgraph-checkpoint**：图执行与状态持久化
+- **langgraph.checkpoint.memory.InMemorySaver**：内存检查点
+- **langchain.agents.create_agent**：在 `example.py` 中用于简单 Agent 示例
+- 主 RAG 流程当前为 LCEL 链（`qa_system.py`），LangGraph 用于示例与扩展
+
+### 5. 文档加载与处理
+- **document_loader.py**：统一文档处理
+  - **TextLoader**、**PyPDFLoader**、**UnstructuredWordDocumentLoader**、**UnstructuredExcelLoader**（langchain_community.document_loaders）
+  - **RecursiveCharacterTextSplitter**（chunk_size=1000, chunk_overlap=200）
+  - 支持 .txt / .pdf / .docx / .xlsx，子目录由 `DATA_DIR`、`DATA_SUBDIRS` 控制
+
+### 6. Web 与异步基础设施
+- **FastAPI** + **uvicorn**：API 服务（`api/main.py`），提供 `/api/chat`、`/api/chat/async`、任务状态、会话管理
+- **Redis**：异步任务队列 + 问答结果缓存（`REDIS_*` / `REDIS_URL`、`TASK_TTL_SECONDS`、`CACHE_TTL_SECONDS`）
+- 敏感配置与运行参数均从环境变量或 `.env` 读取，不写死在代码中
+
+### 7. 运行与部署
+- **python-dotenv**：加载 `.env`，所有入口（qa_system、api、example）均 `load_dotenv()`
+- **Docker Compose**：仅用于 Milvus（及 Attu），应用本身为本地 Python 进程
+- 启动：`python qa_system.py`（CLI）、`uvicorn api.main:app` 或 `./start_api.sh`（API）
+
+---
+
+## 二、开发约定（供 Cursor 与协作者遵守）
+
+### 代码与架构
+- **RAG 链**：统一使用 LangChain 1.0 的 **Runnable 接口**（`invoke`、`|` 组合），避免旧版 `Chain`/`run`。
+- **新增链或步骤**：优先用 `langchain_core.runnables`（如 `RunnablePassthrough`、`RunnableLambda`）与现有 `retriever | format_docs` 风格保持一致。
+- **文档与消息**：统一使用 `langchain_core.documents.Document`（含 `page_content`、`metadata`）和 `langchain_core.messages` 中的消息类型。
+- **配置**：所有可调参数（模型名、目录、Milvus/Redis 连接、TTL 等）从环境变量或 `.env` 读取，参考 `.env.example`；不在代码中硬编码密钥或地址。
+
+### 依赖与版本
+- 以 **requirements.txt** 为准；新增 AI/Agent 相关包时注明是否兼容 LangChain 1.0 与当前 Python 版本。
+- 涉及 **LangGraph** 时，使用 `langgraph.checkpoint` 的 checkpointer，与 `create_agent` 等 API 保持一致。
+
+---
+
+## 三、AI 服务约定（与《技术架构文档》3.3–3.4 一致）
+
+### AI 服务目录结构
+- **ocr/**：OCR 服务（paddleocr 集成、preprocessing、postprocessing）
+- **content_generation/**：内容生成（story_generator、illustration_gen、solution_generator）
+- **voice_synthesis/**：语音合成（如 aliyun_tts、voice_cloning）
+- **configs/**：配置文件（如 ocr_config.yaml），密钥与开关从环境变量或 `.env` 读取，不写死在代码中
+
+### OCR 服务
+- **流程**：预处理（PIL 打开 → 可选图像增强）→ 识别 → 后处理。
+- **输入**：支持 `bytes` 或文件路径的 `image_data`；增强项（对比度、亮度、锐化）由配置控制。
+- **输出**：统一结构含 `text`、`paragraphs`、`math_expressions`、`confidence`；段落与数学表达式检测逻辑放在 postprocessing。
+- **配置**：`use_gpu`、`gpu_memory`、`enhancement.enabled` 等从 `configs/ocr_config.yaml` 或环境变量读取。
+
+### 内容生成（故事 / 解题引导）
+- **故事生成**：按儿童兴趣选择主题与模板（如奥特曼、海底小纵队），模板字段含 introduction、challenge、solution、conclusion；prompt 须包含儿童年龄、姓名、题目内容、知识点、难度；要求题目融入情节、儿童向、正能量、300–500 字、四段结构。
+- **返回值**：至少包含 `theme`、`story`、`illustration_prompts`、`solution_guide`、`estimated_reading_time`；模型调用统一走本项目 LLM 配置（如 ChatTongyi/Qwen），不直接写死第三方模型名。
+- **解题引导**：与故事主题一致，用同一兴趣角色做分步讲解；可与故事生成同链或单独链，输出结构需满足前端展示。
+
+### 第三方服务集成（OCR / TTS）
+- **百度 OCR**：APIKey、SecretKey 从环境变量或配置读取；先取 access_token 再调用识别接口；请求体含 image（base64）、language_type、detect_direction、paragraph、probability。
+- **阿里云 TTS**：access_key_id、access_key_secret 从环境变量或配置读取；发音人、音量、语速等默认值集中在一处（如 voice_config 默认 dict）；返回统一为 `{success, audio_data|error, format}`。
+- 所有第三方密钥、地域、AppKey 等均不硬编码，参考 `.env.example` 声明所需变量。

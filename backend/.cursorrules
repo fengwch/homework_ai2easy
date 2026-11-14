@@ -1,0 +1,576 @@
+# ============================================
+# Kratos (Go) 微服务项目代码风格规范
+# 版本: 2.1
+# 最后更新: 2024-12-26
+# 适用: Cursor AI 代码助手
+# ============================================
+
+# 项目上下文定义
+project_context: |
+  这是一个基于 Kratos v2.x 的 Go 微服务项目，采用以下技术栈和架构：
+  - 核心框架: Kratos v2.x
+  - API 协议: RESTful + gRPC
+  - 服务发现: Consul/Etcd
+  - 数据层: MySQL + GORM/Ent
+  - 缓存: Redis
+  - 消息队列: Kafka/RabbitMQ
+  - 配置管理: 环境变量 + YAML
+  - 日志系统: Zap 或 Kratos Logger
+  - 监控追踪: Prometheus + Grafana + Jaeger
+  - 容器部署: Docker + Kubernetes
+  - CI/CD: GitLab CI/GitHub Actions
+
+# 目录结构规范 (严格遵循 Kratos 官方布局)
+directory_structure_rules: |
+  ├── api/                    # API 定义 (Protobuf 文件)
+  │   ├── v1/                 # 版本化 API
+  │   └── errors/             # 错误定义
+  ├── cmd/                    # 应用程序入口
+  │   └── server/
+  │       └── main.go
+  ├── configs/               # 配置文件
+  │   ├── config.yaml
+  │   └── config.local.yaml
+  ├── internal/              # 私有代码 (不对外暴露)
+  │   ├── biz/               # 业务逻辑层
+  │   │   ├── model/         # 业务模型
+  │   │   ├── service/       # 业务服务接口
+  │   │   └── usecase/       # 业务用例实现
+  │   ├── data/              # 数据访问层
+  │   │   ├── ent/           # Ent 模式定义
+  │   │   ├── repository/    # 仓储接口
+  │   │   └── dao/           # 数据访问对象
+  │   ├── service/           # 服务层
+  │   │   └── grpc/          # gRPC 服务实现（同时实现 HTTP 接口）
+  │   ├── pkg/               # 内部共享包
+  │   └── server/            # 服务实例配置
+  ├── pkg/                   # 可公开的公共包
+  ├── third_party/           # 第三方依赖
+  ├── test/                  # 集成测试
+  ├── deploy/                # 部署配置
+  └── scripts/               # 构建脚本
+
+# 通用编码规范
+general_coding_rules:
+  # 代码格式化
+  - 使用 gofmt 自动格式化所有 Go 代码
+  - 最大行宽限制: 120 个字符
+  - 使用制表符 (tab) 缩进，一个 tab 等于 4 个空格宽度
+  - 结构体字段必须对齐
+  
+  # 导入分组
+  - 导入分三组，每组用空行分隔:
+    1. 标准库
+    2. 第三方库
+    3. 项目内部库
+  - 禁止使用相对路径导入
+  - 禁止导入未使用的包
+  
+  # 命名规范
+  - 包名: 小写字母，简短明确，使用单数名词
+  - 文件名: 小写蛇形命名，如 user_repository.go
+  - 接口名: 大驼峰，以 "er" 结尾 (如 Reader, Repository)
+  - 实现类型: 小写驼峰，如 userRepository
+  - 构造函数: NewXxx 格式
+  - 错误变量: ErrXxx 格式，如 ErrUserNotFound
+  - 布尔变量: 以 is, has, can 等开头
+  - 缩略词: 全大写 (如 HTTP, ID, URL)
+  - 导出标识符: 首字母大写
+  - 私有标识符: 首字母小写
+  
+  # 注释规范
+  - 所有导出的函数、类型、变量必须有注释
+  - 注释以标识符名称开头，如: // User represents a user entity
+  - 函数注释包含: 功能描述、参数说明、返回值说明
+  - 复杂算法必须有详细注释
+  - 使用 godoc 格式编写注释
+  
+  # 错误处理
+  - 禁止忽略错误
+  - 使用 errors.New 或 fmt.Errorf 创建错误
+  - 错误检查使用 errors.Is 和 errors.As
+  - 错误信息: 小写开头，不加句点
+  - 错误包装: fmt.Errorf("context: %w", err)
+  - 业务错误使用 Kratos 错误码
+  
+  # 并发控制
+  - 使用 context 传递超时和取消信号
+  - 避免在循环中创建 goroutine
+  - 使用 sync.Pool 优化对象重用
+  - 读写分离场景使用 sync.RWMutex
+  - 原子操作使用 sync/atomic
+  - 使用 errgroup 管理工作池
+
+# Kratos 特定规范
+kratos_specific_rules:
+  # 依赖注入
+  - 使用 wire 进行依赖注入
+  - Provider 函数命名: NewXxx 或 ProvideXxx
+  - Provider Set 命名: XxxProviderSet
+  - 禁止在业务代码中使用全局变量
+  - 接口定义在使用方，实现定义在提供方
+  
+  # 分层架构
+  - 严格遵循: api -> service -> biz -> data 分层
+  - 每层之间通过接口通信
+  - 上层依赖下层接口，下层不依赖上层
+  
+  # API 设计
+  - RESTful API:
+    - 资源使用复数名词: /api/v1/users
+    - 正确使用 HTTP 方法: GET/POST/PUT/DELETE/PATCH
+    - 状态码: 200(成功) 201(创建) 400(参数错误) 401(未授权) 403(禁止) 404(不存在) 500(服务错误)
+    - 统一响应格式: {"code":0, "message":"success", "data":{}, "metadata":{}}
+    
+  - gRPC API:
+    - 使用 Protobuf v3
+    - 包名: api.服务名.版本，如 api.user.v1
+    - 服务名: 大驼峰 + Service，如 UserService
+    - 请求/响应: XxxRequest/XxxResponse
+    - 枚举: 大写下划线，如 USER_STATUS_ACTIVE
+    - 字段: 小写蛇形，如 user_name
+  
+  # gRPC 和 HTTP 统一实现架构
+  - 核心原则: 业务逻辑统一实现，通过 proto 注解自动生成 HTTP 路由
+  - 实现位置: 所有业务逻辑在 internal/service/grpc/ 目录下的服务实现中统一编写
+  - 禁止创建单独的 HTTP handler: 不允许在 internal/service/http/ 目录下手动创建 HTTP 处理器
+  - Proto 文件要求:
+    - 在 proto 文件中为每个 RPC 方法添加 google.api.http 注解
+    - HTTP 路由通过注解自动生成，无需手动注册
+    - 示例:
+      ```protobuf
+      service UserService {
+        rpc Register (RegisterRequest) returns (RegisterReply) {
+          option (google.api.http) = {
+            post: "/api/v1/users/register"
+            body: "*"
+          };
+        }
+      }
+      ```
+  - 代码生成:
+    - 使用 protoc-gen-go-http 插件生成 HTTP 路由注册代码
+    - 运行 make api 命令自动生成 api/{service}/v1/{service}_http.pb.go 文件
+    - 生成的文件包含 RegisterXxxServiceHTTPServer 函数，用于自动注册路由
+  - 服务实现要求:
+    - gRPC 服务必须同时实现 v1.UserServiceServer (gRPC 接口) 和 v1.UserServiceHTTPServer (HTTP 接口)
+    - 由于两个接口的方法签名完全相同，只需实现一次即可同时满足两个接口
+    - 在服务实现中添加编译时检查: var _ v1.UserServiceHTTPServer = (*UserService)(nil)
+    - 示例:
+      ```go
+      type UserService struct {
+        v1.UnimplementedUserServiceServer
+        uc  usecase.UserUsecase
+        log *log.Helper
+      }
+      // 编译时检查：确保实现了 HTTP 接口
+      var _ v1.UserServiceHTTPServer = (*UserService)(nil)
+      ```
+  - HTTP 服务器注册:
+    - 在 internal/server/http.go 中使用自动生成的 RegisterXxxServiceHTTPServer 函数注册路由
+    - 将同一个服务实例同时传递给 gRPC 和 HTTP 服务器
+    - 示例:
+      ```go
+      func NewHTTPServer(c *conf.Server, userService *grpcService.UserService) *kratosHttp.Server {
+        srv := kratosHttp.NewServer(opts...)
+        v1.RegisterUserServiceHTTPServer(srv, userService)
+        return srv
+      }
+      ```
+  - 工作流程:
+    1. 在 api/{service}/v1/{service}.proto 中定义服务和 HTTP 路由注解
+    2. 运行 make api 生成代码（包含 HTTP 路由注册代码）
+    3. 在 internal/service/grpc/{service}_service.go 中实现业务逻辑
+    4. 在 internal/server/http.go 中调用 RegisterXxxServiceHTTPServer 注册路由
+    5. 自动支持 gRPC 和 HTTP 两种协议
+  - 优势:
+    - 单一实现: 业务逻辑只需实现一次，避免代码重复
+    - 自动生成: HTTP 路由代码通过工具自动生成，减少手动维护成本
+    - 类型安全: 编译时检查确保接口实现正确
+    - 易于维护: 修改业务逻辑只需在一个地方进行，自动同步到两种协议
+    - 一致性: 确保 gRPC 和 HTTP 接口的行为完全一致
+    
+  # 中间件
+  - 按顺序添加中间件: 追踪 -> 日志 -> 恢复 -> 认证 -> 限流 -> 验证
+  - 认证: 基于 JWT
+  - 限流: 令牌桶算法
+  - 熔断: 基于 Hystrix 模式
+  - 超时: context.WithTimeout
+  - 指标收集: Prometheus metrics
+  - 链路追踪: OpenTelemetry/Jaeger
+
+# 数据层规范
+data_layer_rules:
+  # GORM 规范
+  - 模型嵌入 gorm.Model
+  - 表名: 自动复数，或通过 TableName() 自定义
+  - 字段标签: 明确指定 column, type, 约束
+  - 查询: 使用链式调用，避免原始 SQL
+  - 事务: 使用 db.Transaction
+  - 软删除: 使用 gorm.DeletedAt
+  
+  # Ent 规范
+  - Schema 定义在 ent/schema
+  - 修改后运行: go generate ./ent
+  - 查询: 使用生成的 Fluent API
+  
+  # 通用数据库规范
+  - 使用连接池，设置合理参数
+  - 使用 Prepared Statements
+  - 避免 N+1 查询
+  - 查询字段: 明确指定所需字段
+  - 索引: 为查询条件字段添加索引
+  - 分页: 使用游标分页替代 offset
+  - 大结果集: 使用流式查询
+  
+  # 缓存规范
+  - 缓存键格式: {服务}:{资源}:{标识符}，如 user:profile:123
+  - 缓存穿透: 布隆过滤器或空值缓存
+  - 缓存雪崩: 随机过期时间
+  - 缓存击穿: 互斥锁
+  - 序列化: JSON 或 MessagePack
+  - 本地缓存: 使用 freecache
+  - Redis: 集群模式，合理设置超时
+
+# 配置与部署规范
+configuration_deployment_rules:
+  # 配置管理
+  - 配置优先级: 环境变量 > 配置文件 > 默认值
+  - 配置文件: YAML 格式，configs/ 目录下
+  - 环境配置: configs/config.{env}.yaml
+  - 敏感信息: 从 Vault 或 K8s Secret 获取
+  - 配置结构: 定义结构体，使用 mapstructure 标签
+  - 热更新: 支持配置热重载
+  
+  # 日志规范（见下方「日志系统规范」详述）
+  - 结构化日志: key-value 格式
+  - 日志级别: Debug < Info < Warn < Error < Fatal
+  - 生产环境: JSON 格式，包含时间戳、级别、trace_id
+  - 敏感信息: 不在日志中记录密码、token
+  - 日志字段: 包含请求 ID、用户 ID、耗时等
+  
+  # 部署规范
+  - 容器化: Dockerfile 多阶段构建
+  - 镜像标签: 语义化版本
+  - 健康检查: 就绪探针和存活探针
+  - 资源限制: CPU/内存限制
+  - 优雅关闭: 处理 SIGTERM
+  - 配置注入: 通过环境变量
+  - 滚动更新: 使用 Deployment
+
+# 日志系统规范（当前项目约定）
+log_system_rules: |
+  本项目日志实现位于 pkg/logger，基于 Zap + Kratos log 接口，通过 YAML/Proto 配置，经 Wire 注入到各层。生成或修改日志相关代码时必须遵循以下写法与配置约定。
+  
+  ## 1. 包结构与职责
+  - pkg/logger/logger.go: NewLogger(level, format, output, filePath, opts...)、NewLoggerFromConfig(cfg *LoggerConfig)；LoggerConfig、Option 函数（WithMaxSize/WithMaxBackups/WithMaxAge/WithCompress/WithEnableCaller/WithEnableStacktrace）；parseLevel(level string)。
+  - pkg/logger/kratos_adapter.go: kratosLoggerAdapter 实现 log.Logger；Helper 提供 Debug/Info/Warn/Error/Fatal 及 Debugf/Infof/Warnf/Errorf/Fatalf；NewHelper(logger log.Logger) 从 kratosLoggerAdapter 提取 zap 使用。
+  - pkg/logger/config.go: ConfigFromProto(cfg *conf.Logger) 将 Proto 配置转为 LoggerConfig；DefaultConfig() 提供默认 LoggerConfig。
+  - pkg/logger/provider.go: NewLoggerFromProtoConfig(cfg *conf.Logger) 供 Wire 使用；ProviderSet 包含该 Provider。
+  - 底层实现: go.uber.org/zap + gopkg.in/natefinch/lumberjack.v2；编码器支持 json / text（Console）；输出支持 stdout / file / both。
+  
+  ## 2. 配置约定
+  - 配置文件: configs/config.yaml 中 logger 段；对应 internal/conf 中 Bootstrap.logger（conf.proto 中 Logger 消息）。
+  - 字段及含义:
+    level: "info"              # 取值: debug, info, warn/warning, error, fatal
+    format: "json"             # json 或 text
+    output: "stdout"           # stdout | file | both
+    file_path: "logs/app.log"  # output 为 file 或 both 时生效
+    max_size: 100              # 单文件最大大小（MB）
+    max_backups: 5             # 保留备份个数
+    max_age: 30                # 保留天数
+    compress: true             # 是否压缩历史文件
+    enable_caller: true        # 是否打调用者信息
+    enable_stacktrace: false   # 是否在 Error 及以上级别打堆栈
+  - 默认值: 若 Proto 未提供，按 ConfigFromProto/DefaultConfig 的默认值（level=info, format=json, output=stdout, file_path=logs/app.log, max_size=100, max_backups=5, max_age=30, compress=true, enable_caller=true, enable_stacktrace=false）。
+  
+  ## 3. 注入与使用写法
+  - 注入: 使用 Wire，通过 NewLoggerFromProtoConfig(cfg *conf.Logger) 得到 log.Logger 和 cleanup；在 ProviderSet 中注册，供各层构造函数入参使用。
+  - 服务层 / 用例层 / 仓储层: 结构体字段统一为 `log *log.Helper`（使用 github.com/go-kratos/kratos/v2/log）；构造函数入参为 `logger log.Logger`，赋值 `log: log.NewHelper(logger)`。
+  - 打日志: 一律带上下文，使用 `s.log.WithContext(ctx).Infof(...)`、`Errorf(...)`、`Debugf(...)` 等；关键流程与耗时需打 Info，错误必须打 Error，调试信息用 Debug；不在日志中输出密码、token 等敏感信息。
+  - 示例（服务层）:
+    ```go
+    type UserService struct {
+      v1.UnimplementedUserServiceServer
+      uc  usecase.UserUsecase
+      log *log.Helper
+    }
+    func NewUserService(uc usecase.UserUsecase, logger log.Logger) *UserService {
+      return &UserService{uc: uc, log: log.NewHelper(logger)}
+    }
+    // 在方法内
+    s.log.WithContext(ctx).Infof("Register request received: username=%s, email=%s", req.Username, req.Email)
+    s.log.WithContext(ctx).Errorf("Register failed after %v: %v", duration, err)
+    ```
+  - 新建服务/用例/仓储时: 构造函数增加 `logger log.Logger` 参数，结构体增加 `log *log.Helper`，在 Wire 绑定中传入统一的 log.Logger，业务代码中只使用 `log.Helper` 的 WithContext + Infof/Errorf/Debugf 等。
+  
+  ## 4. 级别与场景
+  - Debug: 调试信息、Context deadline、详细参数（脱敏后）。
+  - Info: 请求入口、关键步骤、耗时、成功结果（如 user_id）。
+  - Warn: 可恢复的异常、降级、重试。
+  - Error: 失败原因、err、必要时配合 enable_stacktrace 排查。
+  - Fatal: 仅用于进程无法继续时，慎用。
+  
+  ## 5. 与规范的一致性
+  - 所有导出的 logger 包函数、类型、Option 需有 godoc 注释。
+  - 新增 LoggerConfig 字段或 Option 时，需同步更新 ConfigFromProto、DefaultConfig 及 config.yaml/config.example.yaml；若配置来自 Proto，需在 conf.proto 中扩展 Logger 消息。
+
+# 测试规范
+testing_rules:
+  # 单元测试
+  - 测试文件: 与被测文件同目录，_test.go 后缀
+  - 测试函数: TestXxx，使用 t.Run 组织子测试
+  - 表驱动测试: 使用 []struct
+  - 测试覆盖率: 不低于 80%
+  - Mock: 使用 gomock
+  - 测试数据: 使用 testdata/ 目录
+  
+  # 集成测试
+  - 使用 testcontainers
+  - 测试数据库: 每个测试用例独立数据库
+  - 测试数据: 使用 factory 或 fixture
+  
+  # 基准测试
+  - 函数名: BenchmarkXxx
+  - 避免在循环内调用计时器控制
+  
+  # 示例测试
+  - 文件名: example_test.go
+  - 展示 API 使用方法
+
+# 安全规范
+security_rules:
+  - 输入验证: 使用 validator
+  - SQL 注入: 参数化查询
+  - XSS: 模板自动转义
+  - CSRF: 使用 Kratos 中间件
+  - 密码存储: bcrypt/scrypt
+  - JWT: 合理设置过期时间
+  - 速率限制: 防止暴力破解
+  - CORS: 明确允许的源
+  - 敏感头信息: 过滤敏感头
+  - 文件上传: 验证文件类型和大小
+
+# 监控与可观测性
+observability_rules:
+  - 指标: Prometheus metrics，包含 QPS、延迟、错误率
+  - 日志: 结构化日志，关联 trace_id
+  - 追踪: OpenTelemetry，包含完整的调用链
+  - 健康检查: /healthz, /readyz
+  - 性能剖析: /debug/pprof
+  - 告警: 关键指标设置告警
+  - 仪表板: Grafana 展示关键指标
+
+# 错误码规范
+error_code_rules:
+  - 系统错误: 10000-19999
+  - 业务错误: 20000-29999
+  - 认证错误: 30000-39999
+  - 参数错误: 40000-49999
+  - 外部服务错误: 50000-59999
+  - 示例:
+    - 10001: 系统内部错误
+    - 20001: 用户不存在
+    - 30001: 令牌无效
+    - 40001: 参数格式错误
+    - 50001: 第三方服务不可用
+
+# 提交规范
+commit_rules:
+  - 格式: <type>(<scope>): <subject>
+  - 类型: feat, fix, docs, style, refactor, test, chore, perf, build, ci, revert
+  - 范围: api, biz, data, service, config, cmd, pkg, deps
+  - 示例: feat(user): 添加用户注册接口
+  - 正文: 详细描述变更内容
+  - 页脚: 关闭 issue 或描述不兼容变更
+
+# Cursor AI 生成指令示例
+ai_generation_examples: |
+  # 生成 Repository
+  "在 internal/data 目录创建 user_repository.go，实现 UserRepository 接口，包含以下方法: Create, FindByID, FindByName, Update, Delete，使用 GORM 实现，支持事务"
+  
+  # 生成 Usecase
+  "在 internal/biz 目录创建 user_usecase.go，实现用户注册、登录、信息获取业务逻辑，密码使用 bcrypt 加密，包含参数验证和错误处理"
+  
+  # 生成 gRPC 服务（同时实现 HTTP 接口）
+  "在 api/user/v1/user.proto 中定义 UserService，为每个 RPC 方法添加 google.api.http 注解，然后在 internal/service/grpc 目录实现服务，确保同时实现 UserServiceServer 和 UserServiceHTTPServer 接口"
+  
+  # 生成中间件
+  "创建 JWT 认证中间件，从 Authorization 头解析 token，验证签名和过期时间，将用户信息存入上下文"
+  
+  # 生成 Proto 文件（包含 HTTP 注解）
+  "在 api/user/v1 目录创建 user.proto，定义 User 消息和 UserService 服务，包含 CreateUser, GetUser, UpdateUser, DeleteUser RPC 方法，每个 RPC 方法添加 google.api.http 注解定义 HTTP 路由"
+  
+  # 生成单元测试
+  "为 user_usecase.go 生成单元测试，使用 gomock 模拟依赖，覆盖所有方法，包括正常情况和异常情况"
+  
+  # 生成配置结构
+  "创建 config 包，定义 Server, Data, Logger 配置结构体，支持从 YAML 文件和环境变量加载"
+  
+  # 生成 Dockerfile
+  "创建多阶段构建的 Dockerfile，第一阶段使用 golang:alpine 编译，第二阶段使用 alpine 运行，设置健康检查，非 root 用户运行"
+
+# AI 交互指导
+ai_interaction_guidance: |
+  # 代码审查指令
+  - "审查这段代码，指出潜在的性能问题、安全问题或不符合规范的地方"
+  - "优化这个数据库查询，添加适当的索引建议"
+  - "检查这个函数是否有内存泄漏风险"
+  
+  # 代码优化指令
+  - "将这个递归函数改为尾递归或迭代实现"
+  - "优化这个循环的性能，减少内存分配"
+  - "将这个同步调用改为异步，提高并发性能"
+  
+  # 调试指令
+  - "分析这个错误的原因，并提供修复方案"
+  - "这个函数在高并发场景下有数据竞争，如何修复"
+  - "这段代码在大数据量下性能下降，如何优化"
+  
+  # 重构指令
+  - "将这个庞大的函数拆分为多个小函数"
+  - "提取这段重复代码为公共函数"
+  - "将这个类方法改为函数式实现"
+  
+  # 文档生成
+  - "为这个包生成 README 文档"
+  - "为这个 API 生成 Swagger/OpenAPI 文档"
+  - "为这个函数生成使用示例"
+
+# 文件生成模板
+file_generation_templates:
+  # Repository 模板
+  repository_template: |
+    // 在 internal/data/repository 目录
+    // 文件名: {entity}_repository.go
+    package repository
+    
+    import (
+        "context"
+        "gorm.io/gorm"
+        "your-project/internal/biz/model"
+    )
+    
+    type {Entity}Repository interface {
+        Create(ctx context.Context, {entity} *model.{Entity}) error
+        FindByID(ctx context.Context, id uint64) (*model.{Entity}, error)
+        Update(ctx context.Context, {entity} *model.{Entity}) error
+        Delete(ctx context.Context, id uint64) error
+        List(ctx context.Context, page, size int) ([]*model.{Entity}, int64, error)
+    }
+    
+    type {entity}Repository struct {
+        db *gorm.DB
+    }
+    
+    func New{Entity}Repository(db *gorm.DB) {Entity}Repository {
+        return &{entity}Repository{db: db}
+    }
+    
+    // 实现接口方法...
+  
+  # Usecase 模板
+  usecase_template: |
+    // 在 internal/biz/usecase 目录
+    // 文件名: {entity}_usecase.go
+    package usecase
+    
+    import (
+        "context"
+        "your-project/internal/biz/model"
+        "your-project/internal/data/repository"
+    )
+    
+    type {Entity}Usecase interface {
+        Create{Entity}(ctx context.Context, req *Create{Entity}Request) (*model.{Entity}, error)
+        Get{Entity}(ctx context.Context, id uint64) (*model.{Entity}, error)
+        // 其他方法...
+    }
+    
+    type {entity}Usecase struct {
+        repo repository.{Entity}Repository
+    }
+    
+    func New{Entity}Usecase(repo repository.{Entity}Repository) {Entity}Usecase {
+        return &{entity}Usecase{repo: repo}
+    }
+    
+    // 实现业务逻辑...
+
+# 快捷键映射 (适用于 Cursor)
+shortcut_mappings:
+  - Ctrl+K: 对选中代码进行 AI 编辑
+  - Ctrl+L: 打开 AI 聊天对话框
+  - Ctrl+I: 打开 Composer 模式
+  - @引用: 在对话中引用项目文件
+  - 常用指令前缀:
+    - "生成:": 生成新代码
+    - "优化:": 优化现有代码
+    - "重构:": 重构代码结构
+    - "审查:": 代码审查
+    - "测试:": 生成测试代码
+    - "修复:": 修复错误或漏洞
+
+# 版本控制
+version_control:
+  - 使用 Git 进行版本控制
+  - 分支策略: Git Flow 或 GitHub Flow
+  - 提交前: 运行 go test, gofmt, golangci-lint
+  - 提交信息: 遵循 Conventional Commits
+  - 版本标签: 语义化版本 vX.Y.Z
+  - .gitignore: 忽略二进制文件、依赖、配置文件等
+
+# 性能优化提示
+performance_optimizations:
+  - 避免内存分配: 使用 sync.Pool
+  - 减少 GC 压力: 复用对象
+  - 字符串拼接: 使用 strings.Builder
+  - JSON 解析: 使用 json-iterator
+  - 并发控制: 合理设置 goroutine 数量
+  - 数据库: 使用连接池，添加索引
+  - 缓存: 合理设置过期时间
+  - 序列化: 使用 protobuf 或 msgpack
+
+# 扩展提示
+additional_notes: |
+  # 当 AI 生成代码时，请确保:
+  1. 遵循上述所有规范
+  2. 生成的代码可以直接编译通过
+  3. 包含必要的错误处理
+  4. 包含适当的日志记录
+  5. 考虑并发安全性
+  6. 添加适当的注释
+  7. 提供单元测试示例
+  
+  # 如果生成 API 代码，请确保:
+  1. 包含参数验证
+  2. 统一的错误处理
+  3. 适当的 HTTP 状态码
+  4. 安全的输入处理
+  5. 性能考虑 (分页、缓存)
+  
+  # 如果生成数据库代码，请确保:
+  1. 使用事务处理
+  2. 适当的索引
+  3. 防止 SQL 注入
+  4. 连接管理
+  5. 错误处理
+
+# 更新日志
+changelog: |
+  v2.2 (2025-01-26):
+    - 新增「日志系统规范」：将当前日志实现（pkg/logger、Zap + Kratos、YAML/Proto 配置、Wire 注入）的写法与配置约定写入 cursorrules，包括包结构、配置字段、注入与使用写法、级别与场景、与规范一致性要求。
+  v2.1 (2024-12-26):
+    - 添加 gRPC 和 HTTP 统一实现架构约定
+    - 规定业务逻辑统一在 internal/service/grpc/ 目录实现
+    - 禁止手动创建 HTTP handler，使用 proto 注解自动生成路由
+    - 更新目录结构说明，移除 internal/service/http/ 目录
+    - 更新 AI 生成指令示例，强调统一实现方式
+  
+  v2.0 (2024-01-20):
+    - 初始版本，整合 Kratos 项目完整规范
+    - 包含代码风格、架构、测试、安全等全方位规范
+    - 添加 AI 生成指令示例和模板
+  
+  v1.0 (2024-01-15):
+    - 基础规范版本

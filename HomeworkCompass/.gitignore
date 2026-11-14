@@ -1,0 +1,36 @@
+# 凭证永不入库：.env 在任何目录下都不提交
+.env
+*.env
+!.env.example
+
+# 生成产物
+out/
+poc/out/
+*.png
+!docs/**/*.png
+# 主题底图必须入库：部署缺图会全部回落占位图
+!assets/bases/*.png
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+.pytest_cache/
+
+# 本地偏好与中间态
+*.local.toml
+
+# SDD 执行工作台（一次性产物，不入库）
+.superpowers/
+# 系统与工具运行时
+.DS_Store
+.comet/
+
+# 打包产物
+dist/
+
+# 字体二进制体积大，默认不入库（README 保留）
+fonts/*.ttc
+fonts/*.ttf
+fonts/*.otf

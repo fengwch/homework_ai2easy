@@ -1,0 +1,73 @@
+<template>
+  <view class="error-container">
+    <image v-if="icon" :src="icon" class="error-icon" mode="aspectFit" />
+    <text class="error-text">{{ text || '出错了' }}</text>
+    <text v-if="subText" class="error-sub-text">{{ subText }}</text>
+    <button v-if="showRetry" class="retry-btn" @click="handleRetry">重试</button>
+    <slot name="action"></slot>
+  </view>
+</template>
+
+<script setup lang="uts">
+interface Props {
+  text?: string
+  subText?: string
+  icon?: string
+  showRetry?: boolean
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  text: '出错了',
+  subText: '',
+  icon: '',
+  showRetry: true
+})
+
+const emit = defineEmits<{
+  retry: []
+}>()
+
+function handleRetry() {
+  emit('retry')
+}
+</script>
+
+<style scoped lang="scss">
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 120rpx 40rpx;
+  min-height: 400rpx;
+}
+
+.error-icon {
+  width: 200rpx;
+  height: 200rpx;
+  margin-bottom: 32rpx;
+  opacity: 0.6;
+}
+
+.error-text {
+  font-size: 32rpx;
+  color: #f56c6c;
+  margin-bottom: 16rpx;
+}
+
+.error-sub-text {
+  font-size: 26rpx;
+  color: #999;
+  margin-bottom: 32rpx;
+}
+
+.retry-btn {
+  padding: 20rpx 48rpx;
+  background: #667eea;
+  color: #fff;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  border: none;
+  margin-top: 24rpx;
+}
+</style>

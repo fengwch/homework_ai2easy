@@ -1,0 +1,161 @@
+syntax = "proto3";
+
+package api.child.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+
+option go_package = "homework_ai2easy/backend/api/child/v1;v1";
+
+// 儿童档案服务
+service ChildService {
+  // 获取儿童列表
+  rpc ListChildren (google.protobuf.Empty) returns (ListChildrenReply) {
+    option (google.api.http) = {
+      get: "/api/v1/children"
+    };
+  }
+
+  // 获取儿童详情
+  rpc GetChild (GetChildRequest) returns (GetChildReply) {
+    option (google.api.http) = {
+      get: "/api/v1/children/{id}"
+    };
+  }
+
+  // 创建儿童档案
+  rpc CreateChild (CreateChildRequest) returns (GetChildReply) {
+    option (google.api.http) = {
+      post: "/api/v1/children"
+      body: "*"
+    };
+  }
+
+  // 更新儿童档案
+  rpc UpdateChild (UpdateChildRequest) returns (GetChildReply) {
+    option (google.api.http) = {
+      put: "/api/v1/children/{id}"
+      body: "*"
+    };
+  }
+
+  // 删除儿童档案
+  rpc DeleteChild (DeleteChildRequest) returns (DeleteChildReply) {
+    option (google.api.http) = {
+      delete: "/api/v1/children/{id}"
+    };
+  }
+
+  // 上传儿童头像
+  rpc UploadAvatar (UploadAvatarRequest) returns (UploadAvatarReply) {
+    option (google.api.http) = {
+      post: "/api/v1/children/{id}/avatar"
+      body: "*"
+    };
+  }
+}
+
+// 获取儿童详情请求
+message GetChildRequest {
+  int64 id = 1;
+}
+
+// 删除儿童请求
+message DeleteChildRequest {
+  int64 id = 1;
+}
+
+// 获取儿童列表响应
+message ListChildrenReply {
+  int32 code = 1;
+  string message = 2;
+  repeated ChildData data = 3;
+}
+
+// 获取儿童详情响应
+message GetChildReply {
+  int32 code = 1;
+  string message = 2;
+  ChildData data = 3;
+}
+
+// 创建儿童档案请求
+message CreateChildRequest {
+  string name = 1;
+  string nickname = 2;
+  int32 gender = 3;  // 0:未知 1:男 2:女
+  string birth_date = 4;
+  string grade = 5;
+  string avatar_url = 6;
+  repeated string interests = 7;
+  repeated string custom_interests = 8;
+  string learning_style = 9;  // visual/auditory/kinesthetic/reading
+  int32 attention_span = 10;  // 专注时长（分钟）
+  repeated string weak_subjects = 11;
+}
+
+// 更新儿童档案请求
+message UpdateChildRequest {
+  int64 id = 1;
+  string name = 2;
+  string nickname = 3;
+  int32 gender = 4;
+  string birth_date = 5;
+  string grade = 6;
+  string avatar_url = 7;
+  repeated string interests = 8;
+  repeated string custom_interests = 9;
+  string learning_style = 10;
+  int32 attention_span = 11;
+  repeated string weak_subjects = 12;
+}
+
+// 儿童数据
+message ChildData {
+  int64 id = 1;
+  string name = 2;
+  string nickname = 3;
+  int32 gender = 4;
+  string birth_date = 5;
+  string grade = 6;
+  string avatar_url = 7;
+  repeated string interests = 8;
+  repeated string custom_interests = 9;
+  string learning_style = 10;
+  int32 attention_span = 11;
+  repeated string weak_subjects = 12;
+  LearningStats learning_stats = 13;
+  string created_at = 14;
+  string updated_at = 15;
+}
+
+// 学习统计
+message LearningStats {
+  int64 total_study_time = 1;  // 总学习时长（秒）
+  int32 completed_assignments = 2;  // 完成作业数
+  float average_score = 3;  // 平均得分
+  string last_study_date = 4;  // 最后学习日期
+}
+
+// 删除儿童响应
+message DeleteChildReply {
+  int32 code = 1;
+  string message = 2;
+}
+
+// 上传头像请求
+message UploadAvatarRequest {
+  int64 id = 1;
+  bytes file = 2;
+}
+
+// 上传头像响应
+message UploadAvatarReply {
+  int32 code = 1;
+  string message = 2;
+  UploadAvatarData data = 3;
+}
+
+message UploadAvatarData {
+  string avatar_url = 1;
+}

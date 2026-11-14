@@ -1,0 +1,133 @@
+syntax = "proto3";
+
+package api.content.v1;
+
+import "google/api/annotations.proto";
+
+option go_package = "homework_ai2easy/backend/api/content/v1;v1";
+
+// 学习内容服务
+service ContentService {
+  // 获取学习材料
+  rpc GetContent (GetContentRequest) returns (GetContentReply) {
+    option (google.api.http) = {
+      get: "/api/v1/contents/{story_id}"
+    };
+  }
+
+  // 提交题目答案
+  rpc SubmitAnswer (SubmitAnswerRequest) returns (SubmitAnswerReply) {
+    option (google.api.http) = {
+      post: "/api/v1/questions/{question_id}/answer"
+      body: "*"
+    };
+  }
+
+  // 解题引导
+  rpc GetSolutionGuide (GetSolutionGuideRequest) returns (GetSolutionGuideReply) {
+    option (google.api.http) = {
+      post: "/api/v1/contents/solution-guide"
+      body: "*"
+    };
+  }
+
+  // 导出学习材料为 PDF（由 RegisterContentRoutes 自定义 handler 处理，不生成 proto 路由）
+  rpc ExportPdf (ExportPdfRequest) returns (ExportPdfReply) {}
+}
+
+// 获取学习材料请求
+message GetContentRequest {
+  string story_id = 1;  // 故事ID（路径参数）
+}
+
+// 获取学习材料响应
+message GetContentReply {
+  int32 code = 1;
+  string message = 2;
+  ContentData data = 3;
+}
+
+// 学习材料数据
+message ContentData {
+  string story_id = 1;        // 故事ID
+  string title = 2;           // 标题
+  string summary = 3;         // 简介
+  string story = 4;           // 故事正文
+  repeated ContentQuestion questions = 5;  // 关联练习题
+  string theme = 6;           // 主题
+  repeated string images = 7; // 故事配图 URL 列表，仅当已生成插图并落库时返回；无插图时为空数组
+}
+
+// 练习题数据
+message ContentQuestion {
+  string id = 1;              // 题目ID（如 q1）
+  int32 question_number = 2;  // 题号
+  string content = 3;         // 题目内容
+  repeated string options = 4;  // 选项
+  string answer = 5;          // 正确答案
+  string analysis = 6;        // 答案解析
+}
+
+// 提交答案请求
+message SubmitAnswerRequest {
+  string question_id = 1;     // 题目ID（路径参数，如 q1）
+  string answer = 2;          // 用户提交的答案
+  string story_id = 3;        // 故事ID（可选）；无故事时需传 assignment_id 直接按作业题目答题
+  int64 assignment_id = 4;   // 作业ID（当 story_id 为空时必传，用于定位题目与儿童）
+}
+
+// 提交答案响应
+message SubmitAnswerReply {
+  int32 code = 1;
+  string message = 2;
+  SubmitAnswerData data = 3;
+}
+
+// 答题结果数据
+message SubmitAnswerData {
+  bool is_correct = 1;        // 是否正确
+  string feedback = 2;        // 反馈文案
+}
+
+// 解题引导请求
+message GetSolutionGuideRequest {
+  string question_id = 1;     // 题目ID
+  string story_id = 2;        // 故事ID
+  int64 child_id = 3;         // 儿童ID
+}
+
+// 解题引导响应
+message GetSolutionGuideReply {
+  int32 code = 1;
+  string message = 2;
+  SolutionGuideData data = 3;
+}
+
+// 解题引导数据
+message SolutionGuideData {
+  repeated GuideStep steps = 1;  // 引导步骤
+}
+
+// 引导步骤
+message GuideStep {
+  int32 step_number = 1;      // 步骤编号
+  string hint = 2;            // 提示内容
+  string explanation = 3;     // 解释
+}
+
+// 导出 PDF 请求
+message ExportPdfRequest {
+  string story_id = 1;  // 故事ID（路径参数）
+}
+
+// 导出 PDF 响应
+message ExportPdfReply {
+  int32 code = 1;
+  string message = 2;
+  ExportPdfData data = 3;
+}
+
+// 导出 PDF 数据
+message ExportPdfData {
+  string url = 1;  // PDF 文件下载 URL
+}

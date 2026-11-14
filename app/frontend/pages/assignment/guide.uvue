@@ -1,0 +1,303 @@
+<template>
+  <view class="container">
+    <view v-if="loading" class="loading">
+      <text>加载中...</text>
+    </view>
+    
+    <view v-else-if="guide" class="content">
+      <view class="header">
+        <text class="title">{{ guide.title || '解题引导' }}</text>
+      </view>
+
+      <scroll-view scroll-y class="guide-content">
+        <view class="story-section">
+          <text class="section-title">故事化解题思路</text>
+          <text class="story-text">{{ guide.story }}</text>
+        </view>
+
+        <view class="steps-section">
+          <text class="section-title">解题步骤</text>
+          <view
+            v-for="(step, index) in guide.steps"
+            :key="index"
+            class="step-item"
+          >
+            <view class="step-number">{{ index + 1 }}</view>
+            <view class="step-content">
+              <text class="step-title">{{ step.title }}</text>
+              <text class="step-description">{{ step.description }}</text>
+            </view>
+          </view>
+        </view>
+
+        <view v-if="guide.knowledgePoints" class="knowledge-section">
+          <text class="section-title">知识点讲解</text>
+          <view
+            v-for="kp in guide.knowledgePoints"
+            :key="kp.topic"
+            class="knowledge-item"
+          >
+            <text class="knowledge-topic">{{ kp.topic }}</text>
+            <text class="knowledge-desc">{{ kp.description }}</text>
+          </view>
+        </view>
+
+        <view v-if="guide.similarQuestions" class="similar-section">
+          <text class="section-title">相似题目推荐</text>
+          <view
+            v-for="(question, index) in guide.similarQuestions"
+            :key="index"
+            class="similar-item"
+            @click="goToQuestion(question.id)"
+          >
+            <text class="similar-text">{{ question.text }}</text>
+            <text class="similar-arrow">›</text>
+          </view>
+        </view>
+      </scroll-view>
+    </view>
+  </view>
+</template>
+
+<script setup lang="uts">
+import { ref, onMounted } from 'vue'
+import { fetchAssignmentDetail } from '@/api/assignment'
+import type { AssignmentDetail } from '@/api/assignment'
+
+interface Guide {
+  title: string
+  story: string
+  steps: Array<{ title: string; description: string }>
+  knowledgePoints?: Array<{ topic: string; description: string }>
+  similarQuestions?: Array<{ id: string; text: string }>
+}
+
+const guide = ref<Guide | null>(null)
+const loading = ref(true)
+const questionId = ref('')
+
+onMounted(() => {
+  loadGuide()
+})
+
+function loadGuide() {
+  const pages = getCurrentPages()
+  const currentPage = pages[pages.length - 1]
+  const options = currentPage.options || {}
+  const assignmentId = parseInt(options.assignmentId || '0')
+  questionId.value = options.questionId || ''
+  
+  if (!assignmentId) {
+    uni.showToast({
+      title: '作业ID无效',
+      icon: 'none'
+    })
+    setTimeout(() => {
+      uni.navigateBack()
+    }, 1500)
+    return
+  }
+  
+  loading.value = true
+  
+  // TODO: 调用实际的解题引导 API
+  // fetchGuide(assignmentId, questionId.value)
+  
+  // 使用 mock 数据
+  setTimeout(() => {
+    guide.value = {
+      title: '解题引导',
+      story: '小明遇到了一个有趣的数学问题。让我们一起来帮助他解决这个问题吧！',
+      steps: [
+        {
+          title: '理解题意',
+          description: '仔细阅读题目，理解题目要求我们做什么。'
+        },
+        {
+          title: '分析条件',
+          description: '找出题目中给出的已知条件和需要求解的问题。'
+        },
+        {
+          title: '制定方案',
+          description: '根据已知条件，制定解题方案。'
+        },
+        {
+          title: '执行计算',
+          description: '按照方案进行计算，得出答案。'
+        },
+        {
+          title: '验证答案',
+          description: '检查答案是否合理，是否符合题目要求。'
+        }
+      ],
+      knowledgePoints: [
+        {
+          topic: '加法运算',
+          description: '加法是将两个或多个数相加得到和的运算。'
+        }
+      ],
+      similarQuestions: [
+        {
+          id: '1',
+          text: '类似的加法题目'
+        }
+      ]
+    }
+    loading.value = false
+  }, 500)
+}
+
+function goToQuestion(id: string) {
+  uni.showToast({
+    title: '跳转功能开发中',
+    icon: 'none'
+  })
+}
+</script>
+
+<style scoped lang="scss">
+.container {
+  width: 100%;
+  height: 100vh;
+  background: #f5f5f5;
+  display: flex;
+  flex-direction: column;
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  font-size: 28rpx;
+  color: #999;
+}
+
+.header {
+  padding: 32rpx;
+  background: #fff;
+  border-bottom: 2rpx solid #f5f5f5;
+}
+
+.title {
+  font-size: 40rpx;
+  font-weight: bold;
+  color: #333;
+}
+
+.guide-content {
+  flex: 1;
+  padding: 32rpx;
+}
+
+.story-section,
+.steps-section,
+.knowledge-section,
+.similar-section {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 32rpx;
+  margin-bottom: 24rpx;
+}
+
+.section-title {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #333;
+  display: block;
+  margin-bottom: 24rpx;
+}
+
+.story-text {
+  font-size: 28rpx;
+  color: #666;
+  line-height: 1.8;
+  display: block;
+}
+
+.step-item {
+  display: flex;
+  margin-bottom: 24rpx;
+}
+
+.step-number {
+  width: 60rpx;
+  height: 60rpx;
+  border-radius: 50%;
+  background: #667eea;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28rpx;
+  font-weight: bold;
+  margin-right: 24rpx;
+  flex-shrink: 0;
+}
+
+.step-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.step-title {
+  font-size: 28rpx;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 8rpx;
+}
+
+.step-description {
+  font-size: 26rpx;
+  color: #666;
+  line-height: 1.6;
+}
+
+.knowledge-item {
+  margin-bottom: 24rpx;
+  padding-bottom: 24rpx;
+  border-bottom: 2rpx solid #f5f5f5;
+}
+
+.knowledge-item:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.knowledge-topic {
+  font-size: 28rpx;
+  font-weight: bold;
+  color: #667eea;
+  display: block;
+  margin-bottom: 12rpx;
+}
+
+.knowledge-desc {
+  font-size: 26rpx;
+  color: #666;
+  line-height: 1.6;
+  display: block;
+}
+
+.similar-item {
+  display: flex;
+  align-items: center;
+  padding: 24rpx;
+  background: #f5f5f5;
+  border-radius: 12rpx;
+  margin-bottom: 16rpx;
+}
+
+.similar-text {
+  flex: 1;
+  font-size: 26rpx;
+  color: #333;
+}
+
+.similar-arrow {
+  font-size: 32rpx;
+  color: #999;
+}
+</style>

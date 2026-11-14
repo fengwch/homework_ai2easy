@@ -1,0 +1,239 @@
+<template>
+  <view class="container">
+    <view v-if="loading" class="loading">
+      <text>加载中...</text>
+    </view>
+    
+    <view v-else-if="generating" class="generating">
+      <view class="progress-ring">
+        <text class="progress-text">{{ progress }}%</text>
+      </view>
+      <text class="generating-title">正在生成个性化学习内容</text>
+      <text class="generating-hint">预计需要 30 秒，请耐心等待</text>
+    </view>
+    
+    <view v-else-if="content" class="preview-content">
+      <view class="header">
+        <text class="title">{{ content.title }}</text>
+        <text v-if="content.summary" class="summary">{{ content.summary }}</text>
+      </view>
+      <scroll-view scroll-y class="body">
+        <text class="story-text">{{ content.story }}</text>
+        <view v-if="content.questions?.length" class="questions-info">
+          <text>包含 {{ content.questions.length }} 道练习题</text>
+        </view>
+      </scroll-view>
+      <view class="footer">
+        <button class="primary-btn" @click="goToStory">开始学习</button>
+        <button class="secondary-btn" @click="handleRegenerate">重新生成</button>
+      </view>
+    </view>
+
+    <view v-else class="empty">
+      <text>暂无内容</text>
+    </view>
+  </view>
+</template>
+
+<script setup lang="uts">
+import { ref, onMounted } from 'vue'
+import { fetchLearningContent } from '@/api/content'
+import { generateContent } from '@/api/assignment'
+import type { LearningContent } from '@/api/content'
+
+const content = ref<LearningContent | null>(null)
+const loading = ref(true)
+const generating = ref(false)
+const progress = ref(0)
+const storyId = ref('')
+const assignmentId = ref(0)
+
+onMounted(() => {
+  loadData()
+})
+
+function loadData() {
+  const pages = getCurrentPages()
+  const currentPage = pages[pages.length - 1]
+  const options = currentPage.options || {}
+  const sid = options.storyId || options.id || ''
+  const aid = parseInt(options.assignmentId || '0')
+  
+  if (!sid) {
+    uni.showToast({ title: '参数无效', icon: 'none' })
+    loading.value = false
+    return
+  }
+  
+  storyId.value = sid
+  assignmentId.value = aid
+  loading.value = true
+  
+  fetchLearningContent(sid)
+    .then((data) => {
+      content.value = data
+    })
+    .catch(() => {
+      loading.value = false
+    })
+    .finally(() => {
+      loading.value = false
+    })
+}
+
+function goToStory() {
+  uni.redirectTo({
+    url: `/pages/learning/story?storyId=${storyId.value}&assignmentId=${assignmentId.value}`
+  })
+}
+
+async function handleRegenerate() {
+  if (!assignmentId.value) return
+  generating.value = true
+  progress.value = 0
+  const timer = setInterval(() => {
+    progress.value = Math.min(progress.value + 10, 90)
+  }, 500)
+  try {
+    await generateContent(assignmentId.value)
+    progress.value = 100
+    clearInterval(timer)
+    uni.showToast({ title: '生成完成', icon: 'success' })
+    setTimeout(() => {
+      generating.value = false
+      loadData()
+    }, 500)
+  } catch (err) {
+    clearInterval(timer)
+    generating.value = false
+    uni.showToast({ title: '重新生成失败', icon: 'none' })
+  }
+}
+</script>
+
+<style scoped lang="scss">
+.container {
+  min-height: 100vh;
+  background: #f5f5f5;
+}
+
+.loading, .empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  font-size: 28rpx;
+  color: #999;
+}
+
+.generating {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 48rpx;
+}
+
+.progress-ring {
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 48rpx;
+}
+
+.progress-text {
+  font-size: 48rpx;
+  font-weight: bold;
+  color: #fff;
+}
+
+.generating-title {
+  font-size: 32rpx;
+  color: #333;
+  margin-bottom: 16rpx;
+}
+
+.generating-hint {
+  font-size: 26rpx;
+  color: #999;
+}
+
+.preview-content {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.header {
+  padding: 40rpx 32rpx;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+}
+
+.title {
+  font-size: 36rpx;
+  font-weight: bold;
+  display: block;
+  margin-bottom: 12rpx;
+}
+
+.summary {
+  font-size: 26rpx;
+  opacity: 0.9;
+  line-height: 1.5;
+}
+
+.body {
+  flex: 1;
+  padding: 32rpx;
+  background: #fff;
+}
+
+.story-text {
+  font-size: 28rpx;
+  color: #333;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  display: block;
+}
+
+.questions-info {
+  margin-top: 32rpx;
+  padding: 24rpx;
+  background: #f5f5f5;
+  border-radius: 12rpx;
+  font-size: 26rpx;
+  color: #666;
+}
+
+.footer {
+  padding: 24rpx 32rpx;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.primary-btn {
+  height: 88rpx;
+  background: #667eea;
+  color: #fff;
+  border-radius: 12rpx;
+  font-size: 32rpx;
+  border: none;
+}
+
+.secondary-btn {
+  height: 80rpx;
+  background: #f0f0f0;
+  color: #666;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  border: none;
+}
+</style>

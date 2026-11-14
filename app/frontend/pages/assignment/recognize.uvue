@@ -1,0 +1,1114 @@
+<template>
+  <view class="container">
+    <view v-if="loading" class="loading">
+      <text>加载识别结果...</text>
+    </view>
+    
+    <view v-else-if="normalizedQuestions.length > 0" class="content">
+      <view class="header">
+        <text class="title">识别结果</text>
+        <text class="subtitle">共识别到 {{ normalizedQuestions.length }} 道题目</text>
+      </view>
+
+      <scroll-view scroll-y class="questions-list">
+        <view
+          v-for="(question, index) in normalizedQuestions"
+          :key="question.id"
+          class="question-card"
+        >
+          <view class="question-header">
+            <view class="question-header-left">
+              <text class="question-number">第{{ question.questionNumber }}题</text>
+              <text class="gen-status-badge" :class="question.genStatus || 'none'">{{ getGenStatusText(question.genStatus) }}</text>
+            </view>
+            <picker
+              :value="getTypeIndex(question.questionType)"
+              :range="questionTypes"
+              range-key="label"
+              @change="(e) => onTypeChange(index, e)"
+            >
+              <view class="question-type-picker">{{ getQuestionTypeText(question.questionType) }} ▼</view>
+            </picker>
+          </view>
+          
+          <view class="question-content">
+            <text class="question-text">{{ question.originalText }}</text>
+          </view>
+
+          <view class="question-actions">
+            <button
+              v-if="question.genStatus === 'completed' && question.storyId"
+              class="action-btn story-btn"
+              @click="goToLearning(question.storyId, index)"
+            >
+              开始学习
+            </button>
+            <button
+              v-else-if="!question.id.startsWith('new-')"
+              class="action-btn generate-btn"
+              :disabled="question.genStatus === 'processing'"
+              @click="generateForQuestion(index)"
+            >
+              {{ question.genStatus === 'processing' ? '生成中...' : '生成内容' }}
+            </button>
+            <text
+              v-if="question.imageStatus && question.imageStatus !== 'none'"
+              class="question-image-status"
+            >
+              配图生成：{{ formatImageStatusText(question.imageStatus, question.imageProgress) }}
+            </text>
+            <!-- 先隐藏编辑/知识点/删除入口 -->
+            <button v-if="false" class="action-btn edit-btn" @click="editQuestion(index)">编辑</button>
+            <button v-if="false" class="action-btn knowledge-btn" @click="showKnowledgePoints(index)">知识点</button>
+            <button v-if="false" class="action-btn delete-btn" @click="deleteQuestion(index)">删除</button>
+          </view>
+        </view>
+      </scroll-view>
+
+      <view class="footer-actions">
+        <button
+          v-if="canBatchGenerate"
+          class="batch-gen-btn"
+          :disabled="batchGenerating"
+          @click="batchGenerate"
+        >
+          {{ batchGenerating ? '生成中...' : '批量生成内容' }}
+        </button>
+        <!-- 先隐藏「添加题目」入口 -->
+        <button v-if="false" class="add-btn" @click="addQuestion">+ 添加题目</button>
+        <button class="confirm-btn" @click="handleConfirm">确认并继续</button>
+      </view>
+    </view>
+
+    <view v-else class="empty">
+      <text>暂无识别结果</text>
+      <text class="empty-hint">请先完成作业扫描识别</text>
+    </view>
+
+    <!-- 编辑弹窗 -->
+    <view v-if="editModalVisible" class="modal" @click="closeEditModal">
+      <view class="modal-content" @click.stop>
+        <text class="modal-title">编辑题目</text>
+        <view class="form-group">
+          <text class="form-label">题目内容</text>
+          <textarea
+            v-model="editForm.originalText"
+            class="form-input textarea"
+            placeholder="请输入题目内容"
+            :maxlength="-1"
+          />
+        </view>
+        <view class="form-group">
+          <text class="form-label">题干</text>
+          <input
+            v-model="editForm.stem"
+            class="form-input"
+            placeholder="题干（选填）"
+          />
+        </view>
+        <view class="form-group">
+          <text class="form-label">答案解析</text>
+          <textarea
+            v-model="editForm.analysis"
+            class="form-input textarea small"
+            placeholder="答案解析（选填）"
+            :maxlength="-1"
+          />
+        </view>
+        <view class="form-group">
+          <text class="form-label">题目类型</text>
+          <picker
+            :value="editForm.typeIndex"
+            :range="questionTypes"
+            range-key="label"
+            @change="onEditTypeChange"
+          >
+            <view class="picker-view">{{ questionTypes[editForm.typeIndex]?.label || '请选择' }}</view>
+          </picker>
+        </view>
+        <view class="modal-buttons">
+          <button class="modal-btn cancel" @click="closeEditModal">取消</button>
+          <button class="modal-btn confirm" @click="saveEdit">保存</button>
+        </view>
+      </view>
+    </view>
+
+    <!-- 知识点弹窗 -->
+    <view v-if="knowledgeModalVisible" class="modal" @click="closeKnowledgeModal">
+      <view class="modal-content" @click.stop>
+        <text class="modal-title">知识点</text>
+        <view v-if="loadingKnowledge" class="loading-inline">
+          <text>加载中...</text>
+        </view>
+        <view v-else-if="currentKnowledgePoints.length === 0" class="empty-kp">
+          <text>暂无知识点</text>
+          <text class="kp-hint">可手动添加知识点</text>
+        </view>
+        <view v-else class="kp-list">
+          <view
+            v-for="(kp, idx) in currentKnowledgePoints"
+            :key="idx"
+            class="kp-item"
+          >
+            <text class="kp-text">{{ kp.subject }} · {{ kp.topic }}{{ kp.subtopic ? ' · ' + kp.subtopic : '' }}</text>
+            <text class="kp-diff">{{ getDifficultyText(kp.difficulty) }}</text>
+          </view>
+        </view>
+        <view class="modal-buttons">
+          <button class="modal-btn cancel" @click="closeKnowledgeModal">关闭</button>
+          <button class="modal-btn confirm" @click="openAddKnowledge">添加</button>
+        </view>
+      </view>
+    </view>
+
+    <!-- 添加知识点弹窗 -->
+    <view v-if="addKpModalVisible" class="modal" @click="closeAddKpModal">
+      <view class="modal-content" @click.stop>
+        <text class="modal-title">添加知识点</text>
+        <view class="form-group">
+          <text class="form-label">学科</text>
+          <input v-model="addKpForm.subject" class="form-input" placeholder="如：数学" />
+        </view>
+        <view class="form-group">
+          <text class="form-label">主题</text>
+          <input v-model="addKpForm.topic" class="form-input" placeholder="如：数的认识" />
+        </view>
+        <view class="form-group">
+          <text class="form-label">子主题（选填）</text>
+          <input v-model="addKpForm.subtopic" class="form-input" placeholder="如：奇偶数" />
+        </view>
+        <view class="modal-buttons">
+          <button class="modal-btn cancel" @click="closeAddKpModal">取消</button>
+          <button class="modal-btn confirm" @click="submitAddKnowledge">添加</button>
+        </view>
+      </view>
+    </view>
+  </view>
+</template>
+
+<script setup lang="uts">
+import { ref, computed, onMounted } from 'vue'
+import {
+  fetchAssignmentDetail,
+  updateAssignment,
+  updateQuestion,
+  deleteQuestion as apiDeleteQuestion,
+  updateQuestionType,
+  getKnowledgePoints,
+  updateKnowledgePoints,
+  generateQuestionContent,
+  getQuestionGenerateStatus
+} from '@/api/assignment'
+import type { Question, KnowledgePoint } from '@/api/assignment'
+
+type QuestionType = Question['question_type']
+
+/** 题目维度生成状态 */
+type QuestionGenStatus = 'none' | 'pending' | 'processing' | 'completed' | 'failed'
+
+interface NormalizedQuestion {
+  id: string
+  questionNumber: number
+  questionType: QuestionType
+  originalText: string
+  structuredData?: {
+    stem?: string
+    options?: Array<{ option: string; text: string }>
+    answer?: string
+    analysis?: string
+  }
+  knowledge_points?: KnowledgePoint[]
+  knowledgePoints?: KnowledgePoint[]
+  /** 图片生成状态与进度（用于展示配图生成进度） */
+  imageStatus?: string | null
+  imageProgress?: number | null
+  /** 单题生成状态：none=未生成，processing=生成中，completed=已完成，failed=失败 */
+  genStatus?: QuestionGenStatus
+  /** 单题生成的 story_id，completed 时可用 */
+  storyId?: string
+  _raw?: any
+}
+
+const questions = ref<NormalizedQuestion[]>([])
+const loading = ref(true)
+const assignmentId = ref<number>(0)
+const editModalVisible = ref(false)
+const knowledgeModalVisible = ref(false)
+const loadingKnowledge = ref(false)
+const editIndex = ref(-1)
+const knowledgeIndex = ref(-1)
+
+const questionTypes = [
+  { value: 'multiple_choice', label: '选择题' },
+  { value: 'fill_blank', label: '填空题' },
+  { value: 'calculation', label: '计算题' },
+  { value: 'word_problem', label: '应用题' },
+  { value: 'essay', label: '问答题' }
+]
+
+const editForm = ref({
+  originalText: '',
+  stem: '',
+  analysis: '',
+  typeIndex: 0
+})
+
+const currentKnowledgePoints = ref<KnowledgePoint[]>([])
+
+const normalizedQuestions = computed(() => questions.value)
+
+/** 是否有可批量生成的题目（非新增且未生成或失败） */
+const canBatchGenerate = computed(() => {
+  return questions.value.some(
+    (q) =>
+      !q.id.startsWith('new-') &&
+      (q.genStatus === 'none' || q.genStatus === 'failed' || q.genStatus === undefined)
+  )
+})
+
+const batchGenerating = ref(false)
+
+function parseQuestionGenStatus(raw: any): {
+  genStatus: QuestionGenStatus
+  storyId?: string
+  imageStatus?: string | null
+  imageProgress?: number | null
+} {
+  const gc = raw.generated_content ?? raw.generatedContent
+  if (!gc) return { genStatus: 'none' }
+  const status = gc.status ?? (gc as any).status
+  const sid = gc.story_id ?? gc.storyId
+  const imageStatus = gc.imageStatus ?? gc.image_status ?? null
+  const imageProgressRaw = gc.imageProgress ?? gc.image_progress
+  const imageProgress = typeof imageProgressRaw === 'number' ? imageProgressRaw : null
+  if (status === 'completed' && sid) return { genStatus: 'completed', storyId: sid, imageStatus, imageProgress }
+  if (status === 'failed') return { genStatus: 'failed', imageStatus, imageProgress }
+  if (status === 'processing' || status === 'pending')
+    return { genStatus: 'processing', storyId: sid, imageStatus, imageProgress }
+  return { genStatus: 'none', storyId: sid, imageStatus, imageProgress }
+}
+
+function normalizeQuestion(q: any): NormalizedQuestion {
+  const raw = q
+  const { genStatus, storyId, imageStatus, imageProgress } = parseQuestionGenStatus(raw)
+  const rid = raw.id ?? raw.question_id ?? `q-${Date.now()}-${Math.random().toString(36).slice(2)}`
+  const idStr = typeof rid === 'string' ? rid : String(rid)
+  return {
+    id: idStr,
+    questionNumber: raw.question_number ?? raw.questionNumber ?? 0,
+    questionType: (raw.question_type ?? raw.questionType ?? 'essay') as QuestionType,
+    originalText: raw.original_text ?? raw.originalText ?? '',
+    structuredData: raw.structured_data ?? raw.structuredData,
+    knowledge_points: raw.knowledge_points ?? raw.knowledgePoints,
+    knowledgePoints: raw.knowledge_points ?? raw.knowledgePoints,
+    imageStatus,
+    imageProgress,
+    genStatus,
+    storyId,
+    _raw: raw
+  }
+}
+
+function toApiQuestion(q: NormalizedQuestion): any {
+  return {
+    id: q.id,
+    question_number: q.questionNumber,
+    question_type: q.questionType,
+    original_text: q.originalText,
+    structured_data: q.structuredData,
+    knowledge_points: q.knowledge_points ?? q.knowledgePoints
+  }
+}
+
+onMounted(() => {
+  loadData()
+})
+
+function loadData() {
+  const pages = getCurrentPages()
+  const currentPage = pages[pages.length - 1]
+  const options = currentPage.options || {}
+  const id = parseInt(options.id || '0')
+  
+  if (!id) {
+    uni.showToast({ title: '作业ID无效', icon: 'none' })
+    setTimeout(() => uni.navigateBack(), 1500)
+    return
+  }
+  
+  assignmentId.value = id
+  loading.value = true
+  
+  fetchAssignmentDetail(id)
+    .then((data: any) => {
+      const list = data.questions ?? data.question_list ?? []
+      questions.value = Array.isArray(list)
+        ? list.map((q: any) => normalizeQuestion(q))
+        : []
+    })
+    .catch((err) => {
+      console.error('加载识别结果失败:', err)
+      uni.showToast({ title: '加载失败', icon: 'none' })
+    })
+    .finally(() => {
+      loading.value = false
+    })
+}
+
+function getQuestionTypeText(type: string): string {
+  const item = questionTypes.find(t => t.value === type)
+  return item?.label ?? '未知类型'
+}
+
+function getTypeIndex(type: string): number {
+  const idx = questionTypes.findIndex(t => t.value === type)
+  return idx >= 0 ? idx : 0
+}
+
+function editQuestion(index: number) {
+  const q = questions.value[index]
+  if (!q) return
+  editIndex.value = index
+  editForm.value = {
+    originalText: q.originalText,
+    stem: q.structuredData?.stem ?? '',
+    analysis: q.structuredData?.analysis ?? '',
+    typeIndex: getTypeIndex(q.questionType)
+  }
+  editModalVisible.value = true
+}
+
+function closeEditModal() {
+  editModalVisible.value = false
+  editIndex.value = -1
+}
+
+function onEditTypeChange(e: any) {
+  editForm.value.typeIndex = parseInt(e.detail.value) || 0
+}
+
+async function saveEdit() {
+  const idx = editIndex.value
+  if (idx < 0) return
+  const q = questions.value[idx]
+  if (!q) return
+  
+  const structuredData = { ...q.structuredData }
+  if (editForm.value.stem) structuredData.stem = editForm.value.stem
+  if (editForm.value.analysis) structuredData.analysis = editForm.value.analysis
+  
+  try {
+    await updateQuestion(assignmentId.value, q.id, {
+      originalText: editForm.value.originalText || q.originalText,
+      structuredData: Object.keys(structuredData).length > 0 ? structuredData : undefined,
+      questionType: questionTypes[editForm.value.typeIndex]?.value as QuestionType
+    })
+    
+    questions.value[idx] = {
+      ...q,
+      originalText: editForm.value.originalText || q.originalText,
+      questionType: questionTypes[editForm.value.typeIndex]?.value as QuestionType ?? q.questionType,
+      structuredData: Object.keys(structuredData).length > 0 ? structuredData : q.structuredData
+    }
+    
+    uni.showToast({ title: '保存成功', icon: 'success' })
+    closeEditModal()
+  } catch (err) {
+    console.error('保存失败:', err)
+    uni.showToast({ title: '保存失败，请重试', icon: 'none' })
+  }
+}
+
+function deleteQuestion(index: number) {
+  const q = questions.value[index]
+  if (!q) return
+  
+  uni.showModal({
+    title: '确认删除',
+    content: '确定要删除这道题目吗？删除后将同步到服务器。',
+    success: async (res) => {
+      if (!res.confirm) return
+      
+      if (q.id.startsWith('new-')) {
+        questions.value.splice(index, 1)
+        uni.showToast({ title: '已删除', icon: 'success' })
+        return
+      }
+      
+      try {
+        await apiDeleteQuestion(assignmentId.value, q.id)
+        questions.value.splice(index, 1)
+        uni.showToast({ title: '已删除', icon: 'success' })
+      } catch (err) {
+        console.error('删除失败:', err)
+        uni.showToast({ title: '删除失败，请重试', icon: 'none' })
+      }
+    }
+  })
+}
+
+function onTypeChange(index: number, e: any) {
+  const typeIndex = parseInt(e.detail.value) || 0
+  const type = questionTypes[typeIndex]?.value as QuestionType
+  if (!type) return
+  
+  const q = questions.value[index]
+  if (!q || q.id.startsWith('new-')) {
+    questions.value[index] = { ...q!, questionType: type }
+    return
+  }
+  
+  updateQuestionType(assignmentId.value, q.id, type)
+    .then(() => {
+      questions.value[index] = { ...q, questionType: type }
+      uni.showToast({ title: '已更新', icon: 'success' })
+    })
+    .catch((err) => {
+      console.error('更新类型失败:', err)
+      uni.showToast({ title: '更新失败', icon: 'none' })
+    })
+}
+
+async function showKnowledgePoints(index: number) {
+  const q = questions.value[index]
+  if (!q) return
+  
+  knowledgeIndex.value = index
+  knowledgeModalVisible.value = true
+  currentKnowledgePoints.value = q.knowledge_points ?? q.knowledgePoints ?? []
+  
+  if (!q.id.startsWith('new-')) {
+    loadingKnowledge.value = true
+    try {
+      const res = await getKnowledgePoints(assignmentId.value, q.id)
+      const list = (res as any).knowledge_points ?? (res as any).knowledgePoints ?? []
+      currentKnowledgePoints.value = Array.isArray(list) ? list : []
+    } catch {
+      currentKnowledgePoints.value = []
+    } finally {
+      loadingKnowledge.value = false
+    }
+  }
+}
+
+function closeKnowledgeModal() {
+  knowledgeModalVisible.value = false
+  knowledgeIndex.value = -1
+}
+
+function openAddKnowledge() {
+  const q = knowledgeIndex.value >= 0 ? questions.value[knowledgeIndex.value] : null
+  if (!q || q.id.startsWith('new-')) {
+    uni.showToast({ title: '新增题目需先确认保存后再编辑知识点', icon: 'none' })
+    return
+  }
+  addKpModalVisible.value = true
+  addKpForm.value = { subject: '', topic: '', subtopic: '' }
+}
+
+const addKpModalVisible = ref(false)
+const addKpForm = ref({ subject: '', topic: '', subtopic: '' })
+
+function closeAddKpModal() {
+  addKpModalVisible.value = false
+}
+
+async function submitAddKnowledge() {
+  const { subject, topic, subtopic } = addKpForm.value
+  if (!subject || !topic) {
+    uni.showToast({ title: '请输入学科和主题', icon: 'none' })
+    return
+  }
+  const q = knowledgeIndex.value >= 0 ? questions.value[knowledgeIndex.value] : null
+  if (!q || q.id.startsWith('new-')) return
+  const newKp: KnowledgePoint = { subject, topic, subtopic: subtopic || undefined, difficulty: 'easy' }
+  const list = [...currentKnowledgePoints.value, newKp]
+  try {
+    await updateKnowledgePoints(assignmentId.value, q.id, list)
+    currentKnowledgePoints.value = list
+    questions.value[knowledgeIndex.value] = { ...q, knowledge_points: list, knowledgePoints: list }
+    uni.showToast({ title: '已添加', icon: 'success' })
+    closeAddKpModal()
+  } catch (err) {
+    console.error('添加知识点失败:', err)
+    uni.showToast({ title: '添加失败，请重试', icon: 'none' })
+  }
+}
+
+function getDifficultyText(d: string): string {
+  const map: Record<string, string> = { easy: '简单', medium: '中等', hard: '困难' }
+  return map[d] ?? d
+}
+
+function getGenStatusText(status?: QuestionGenStatus): string {
+  const map: Record<string, string> = {
+    none: '',
+    pending: '等待中',
+    processing: '生成中',
+    completed: '已完成',
+    failed: '生成失败'
+  }
+  return map[status ?? 'none'] ?? ''
+}
+
+function goToLearning(storyId: string, questionIndex?: number) {
+  if (!storyId) return
+  const params = `storyId=${storyId}&assignmentId=${assignmentId.value}` + (questionIndex != null ? `&questionIndex=${questionIndex}` : '')
+  uni.navigateTo({
+    url: `/pages/learning/story?${params}`
+  })
+}
+
+const GEN_POLL_INTERVAL = 2000
+let genPollTimers: Record<string, ReturnType<typeof setTimeout>> = {}
+
+/** 通用：格式化图片生成状态 + 进度，供识别结果页复用 */
+function formatImageStatusText(status: string | null | undefined, progress?: number | null): string {
+  if (!status || status === 'none') return ''
+  const percent = typeof progress === 'number' && progress >= 0 ? `${progress}%` : ''
+  if (status === 'pending') return '待生成'
+  if (status === 'processing') return percent ? `生成中（${percent}）` : '生成中'
+  if (status === 'completed') return '已完成'
+  if (status === 'failed') return '生成失败'
+  return status
+}
+
+async function generateForQuestion(index: number) {
+  const q = questions.value[index]
+  if (!q || q.id.startsWith('new-') || q.genStatus === 'processing') return
+
+  try {
+    await generateQuestionContent(assignmentId.value, q.id)
+    questions.value[index] = { ...q, genStatus: 'processing' }
+    uni.showToast({ title: '开始生成', icon: 'success' })
+    pollQuestionGenerateStatus(index)
+  } catch (err) {
+    console.error('生成失败:', err)
+    uni.showToast({ title: '生成失败，请重试', icon: 'none' })
+  }
+}
+
+async function batchGenerate() {
+  if (batchGenerating.value) return
+  const indices = questions.value
+    .map((q, i) => i)
+    .filter(
+      (i) =>
+        !questions.value[i].id.startsWith('new-') &&
+        questions.value[i].genStatus !== 'processing' &&
+        questions.value[i].genStatus !== 'completed'
+    )
+  if (indices.length === 0) {
+    uni.showToast({ title: '没有需要生成的题目', icon: 'none' })
+    return
+  }
+  batchGenerating.value = true
+  try {
+    for (const i of indices) {
+      await generateQuestionContent(assignmentId.value, questions.value[i].id)
+      questions.value[i] = { ...questions.value[i], genStatus: 'processing' }
+      pollQuestionGenerateStatus(i)
+    }
+    uni.showToast({ title: `已提交 ${indices.length} 题生成`, icon: 'success' })
+  } catch (err) {
+    console.error('批量生成失败:', err)
+    uni.showToast({ title: '提交失败，请重试', icon: 'none' })
+  } finally {
+    batchGenerating.value = false
+  }
+}
+
+function pollQuestionGenerateStatus(index: number) {
+  const q = questions.value[index]
+  if (!q || q.id.startsWith('new-')) return
+
+  const key = q.id
+  if (genPollTimers[key]) clearTimeout(genPollTimers[key])
+
+  getQuestionGenerateStatus(assignmentId.value, q.id)
+    .then((data: any) => {
+      const status = data.status
+      const storyId = data.story_id ?? data.storyId
+      const q2 = questions.value[index]
+      if (!q2 || q2.id !== q.id) return
+
+      const imageStatus = data.imageStatus ?? data.image_status ?? null
+      const imageProgressRaw = data.imageProgress ?? data.image_progress
+      const imageProgress = typeof imageProgressRaw === 'number' ? imageProgressRaw : null
+      const textDone = (status === 'completed' || (data.progress ?? 0) >= 100) && !!storyId
+      const imageDoneOrNotNeeded =
+        !imageStatus && imageProgress == null
+          || imageStatus === 'completed'
+          || imageStatus === 'failed'
+          || (typeof imageProgress === 'number' && imageProgress >= 100)
+
+      if (status === 'failed') {
+        questions.value[index] = { ...q2, genStatus: 'failed', imageStatus: imageStatus ?? 'failed', imageProgress }
+        delete genPollTimers[key]
+        uni.showToast({ title: '生成失败', icon: 'none' })
+        return
+      }
+      // 文本完成但配图仍在生成：先标记题目状态完成，继续轮询图片进度
+      if (textDone && !imageDoneOrNotNeeded) {
+        questions.value[index] = {
+          ...q2,
+          genStatus: 'completed',
+          storyId,
+          imageStatus,
+          imageProgress
+        }
+        genPollTimers[key] = setTimeout(() => pollQuestionGenerateStatus(index), GEN_POLL_INTERVAL)
+        return
+      }
+      // 文本与配图都完成（或无需配图）时结束轮询
+      if (textDone && imageDoneOrNotNeeded) {
+        questions.value[index] = {
+          ...q2,
+          genStatus: 'completed',
+          storyId,
+          imageStatus: imageStatus ?? 'completed',
+          imageProgress: imageProgress ?? 100
+        }
+        delete genPollTimers[key]
+        uni.showToast({ title: '生成完成', icon: 'success' })
+        return
+      }
+      // 文本仍在生成：仅更新当前状态与图片进度
+      questions.value[index] = {
+        ...q2,
+        genStatus: (status as QuestionGenStatus) ?? q2.genStatus,
+        storyId: storyId ?? q2.storyId,
+        imageStatus,
+        imageProgress
+      }
+      genPollTimers[key] = setTimeout(() => pollQuestionGenerateStatus(index), GEN_POLL_INTERVAL)
+    })
+    .catch(() => {
+      genPollTimers[key] = setTimeout(() => pollQuestionGenerateStatus(index), GEN_POLL_INTERVAL)
+    })
+}
+
+function addQuestion() {
+  const newId = `new-${Date.now()}`
+  const nextNum = questions.value.length + 1
+  questions.value.push({
+    id: newId,
+    questionNumber: nextNum,
+    questionType: 'essay',
+    originalText: '请编辑题目内容',
+    structuredData: { stem: '' }
+  })
+  uni.showToast({ title: '已添加，请编辑题目', icon: 'none' })
+}
+
+async function handleConfirm() {
+  if (questions.value.length === 0) {
+    uni.showToast({ title: '至少需要一道题目', icon: 'none' })
+    return
+  }
+
+  try {
+    const apiQuestions = questions.value.map((q, i) => toApiQuestion({
+      ...q,
+      questionNumber: i + 1
+    }))
+    await updateAssignment(assignmentId.value, {
+      questions: apiQuestions,
+      status: 'completed'
+    })
+    uni.showToast({ title: '保存成功', icon: 'success' })
+    setTimeout(() => {
+      uni.redirectTo({ url: `/pages/assignment/detail?id=${assignmentId.value}` })
+    }, 1000)
+  } catch (err) {
+    console.error('保存失败:', err)
+    uni.showToast({ title: '保存失败，请重试', icon: 'none' })
+  }
+}
+</script>
+
+<style scoped lang="scss">
+.container {
+  padding: 32rpx;
+  padding-bottom: 180rpx;
+  min-height: 100vh;
+  background: #f5f5f5;
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 120rpx 0;
+  font-size: 28rpx;
+  color: #999;
+}
+
+.header {
+  margin-bottom: 32rpx;
+}
+
+.title {
+  font-size: 40rpx;
+  font-weight: bold;
+  color: #333;
+  display: block;
+  margin-bottom: 12rpx;
+}
+
+.subtitle {
+  font-size: 26rpx;
+  color: #999;
+  display: block;
+}
+
+.questions-list {
+  max-height: calc(100vh - 360rpx);
+  margin-bottom: 32rpx;
+}
+
+.question-card {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 32rpx;
+  margin-bottom: 24rpx;
+}
+
+.question-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24rpx;
+  padding-bottom: 16rpx;
+  border-bottom: 2rpx solid #f5f5f5;
+}
+
+.question-header-left {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.question-number {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #667eea;
+}
+
+.question-type-picker {
+  font-size: 24rpx;
+  color: #999;
+  background: #f5f5f5;
+  padding: 8rpx 20rpx;
+  border-radius: 8rpx;
+}
+
+.gen-status-badge {
+  font-size: 22rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 8rpx;
+}
+
+.gen-status-badge.none {
+  display: none;
+}
+
+.gen-status-badge.pending,
+.gen-status-badge.processing {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.gen-status-badge.completed {
+  background: #d4edda;
+  color: #155724;
+}
+
+.gen-status-badge.failed {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.question-content {
+  margin-bottom: 24rpx;
+}
+
+.question-text {
+  font-size: 28rpx;
+  color: #333;
+  line-height: 1.6;
+  display: block;
+  margin-bottom: 16rpx;
+}
+
+.options {
+  margin-top: 16rpx;
+}
+
+.option-item {
+  display: flex;
+  margin-bottom: 12rpx;
+}
+
+.option-label {
+  font-size: 26rpx;
+  color: #667eea;
+  margin-right: 12rpx;
+}
+
+.option-text {
+  font-size: 26rpx;
+  color: #666;
+  flex: 1;
+}
+
+.question-actions {
+  display: flex;
+  gap: 16rpx;
+  align-items: center;
+}
+
+.action-btn {
+  flex: 1;
+  padding: 16rpx;
+  border-radius: 8rpx;
+  font-size: 26rpx;
+  border: none;
+}
+
+.generate-btn {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.generate-btn[disabled] {
+  background: #e0e0e0;
+  color: #999;
+}
+
+.story-btn {
+  background: #667eea;
+  color: #fff;
+}
+
+.edit-btn {
+  background: #f0f0f0;
+  color: #666;
+}
+
+.knowledge-btn {
+  background: #e8f4fd;
+  color: #667eea;
+}
+
+.delete-btn {
+  background: #fee;
+  color: #f56c6c;
+}
+
+.question-image-status {
+  font-size: 22rpx;
+  color: #999;
+}
+
+.footer-actions {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 24rpx 32rpx;
+  background: #fff;
+  box-shadow: 0 -4rpx 12rpx rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.batch-gen-btn {
+  flex: 1;
+  min-width: 200rpx;
+  height: 88rpx;
+  background: #e8f5e9;
+  color: #2e7d32;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  border: none;
+}
+
+.batch-gen-btn[disabled] {
+  background: #e0e0e0;
+  color: #999;
+}
+
+.add-btn {
+  flex: 1;
+  height: 88rpx;
+  background: #f0f0f0;
+  color: #666;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  border: none;
+}
+
+.confirm-btn {
+  flex: 2;
+  height: 88rpx;
+  background: #667eea;
+  color: #fff;
+  border-radius: 12rpx;
+  font-size: 32rpx;
+  border: none;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 120rpx 0;
+  font-size: 28rpx;
+  color: #999;
+}
+
+.empty-hint {
+  font-size: 24rpx;
+  color: #bbb;
+  margin-top: 16rpx;
+}
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  width: 90%;
+  max-width: 640rpx;
+  max-height: 80vh;
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 40rpx;
+}
+
+.modal-title {
+  font-size: 36rpx;
+  font-weight: bold;
+  color: #333;
+  display: block;
+  margin-bottom: 32rpx;
+}
+
+.form-group {
+  margin-bottom: 24rpx;
+}
+
+.form-label {
+  font-size: 26rpx;
+  color: #666;
+  display: block;
+  margin-bottom: 12rpx;
+}
+
+.form-input {
+  width: 100%;
+  padding: 20rpx;
+  border: 2rpx solid #e5e5e5;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  box-sizing: border-box;
+}
+
+.textarea {
+  min-height: 120rpx;
+}
+
+.textarea.small {
+  min-height: 80rpx;
+}
+
+.picker-view {
+  padding: 20rpx;
+  border: 2rpx solid #e5e5e5;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  color: #333;
+}
+
+.modal-buttons {
+  display: flex;
+  gap: 24rpx;
+  margin-top: 40rpx;
+}
+
+.modal-btn {
+  flex: 1;
+  height: 80rpx;
+  border-radius: 12rpx;
+  font-size: 30rpx;
+  border: none;
+}
+
+.modal-btn.cancel {
+  background: #f0f0f0;
+  color: #666;
+}
+
+.modal-btn.confirm {
+  background: #667eea;
+  color: #fff;
+}
+
+.loading-inline {
+  padding: 48rpx 0;
+  text-align: center;
+  font-size: 28rpx;
+  color: #999;
+}
+
+.empty-kp {
+  padding: 48rpx 0;
+  text-align: center;
+  font-size: 28rpx;
+  color: #999;
+}
+
+.kp-hint {
+  display: block;
+  font-size: 24rpx;
+  color: #bbb;
+  margin-top: 12rpx;
+}
+
+.kp-list {
+  max-height: 320rpx;
+  overflow-y: auto;
+}
+
+.kp-item {
+  padding: 20rpx;
+  background: #f9f9f9;
+  border-radius: 12rpx;
+  margin-bottom: 16rpx;
+}
+
+.kp-text {
+  font-size: 28rpx;
+  color: #333;
+  display: block;
+}
+
+.kp-diff {
+  font-size: 24rpx;
+  color: #999;
+  margin-top: 8rpx;
+  display: block;
+}
+</style>

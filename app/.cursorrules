@@ -1,0 +1,83 @@
+# App Frontend Rules (uni-app x)
+
+## Project Identity
+
+- Framework: uni-app x (uni-app 2.0) + Vue 3 Composition API + TypeScript + Vite
+- Platforms: H5 (primary), WeChat Mini Program (primary), iOS, Android, HarmonyOS
+- IDE: HBuilderX ^3.99
+- Runtime HTTP: `uni.request` only (no axios)
+
+## File Organization
+
+- Pages: `pages/<domain>/` with `.uvue` files (not `.vue`)
+- Components: `components/` split by `business/` and `common/`
+- API: `api/<domain>.ts` mirroring backend services (auth, user, child, assignment, content, voice)
+- State: `stores/<domain>.ts` using Pinia Composition API style
+- Utils: `utils/` for shared helpers; `styles/` for shared styles
+- Static assets: `static/` (images, fonts)
+- Platform-specific: `wxcomponents/` (WeChat), `nativeResources/` (App), `harmony-configs/` (HarmonyOS)
+
+## Architecture Rules
+
+- All HTTP calls go through `api/http.ts`. Never call `uni.request` directly outside it.
+- API modules must match backend service boundaries. Do not create ad-hoc fetch in pages.
+- Use Pinia stores for shared state; avoid passing deep props for cross-page data.
+- Prefer Composition API with `<script setup>`.
+- Never import backend proto types directly; use the TypeScript interfaces in `api/*.ts`.
+
+## Naming Conventions
+
+| Item | Style |
+|---|---|
+| File / folder | kebab-case |
+| Vue component (file) | PascalCase |
+| TS variable / function | camelCase |
+| Pinia store | camelCase file, export `useXxxStore` |
+| API function | camelCase, action-verb first (`sendSmsCode`, `fetchAssignments`) |
+| Type / Interface | PascalCase |
+| Constant | UPPER_SNAKE_CASE |
+
+## Style
+
+- Indent: 2 spaces
+- Quotes: single (double when string contains single quotes)
+- Semicolons: yes
+- Max line length: 120 (soft)
+- No trailing spaces
+
+## Platform-Specific Constraints
+
+### WeChat Mini Program
+- `manifest.json` → `mp-weixin.urlCheck: false` for local dev
+- All backend domains must be whitelisted in WeChat MP Console
+- TLS 1.2+ required
+
+### H5
+- Standard CORS applies
+- `Content-Type: application/json` auto-added in H5 path of `api/http.ts`
+
+## Error Handling
+
+- Business errors: backend returns `{ code, message, data }`. `code === 0` is success.
+- `401` in `api/http.ts` triggers auto-logout and redirect to login page.
+- Network errors: show `uni.showToast` with user-friendly messages; log detailed error to console.
+
+## Testing
+
+- Jest for unit tests
+- Mock `uni.request` in tests
+- Keep page tests in `pages/pages.test.js`
+
+## Commit Style
+
+- Follow the repo-wide Conventional Commits: `type(scope): subject`
+- Scopes for this project: `app`, `pages`, `api`, `stores`, `components`, `utils`, `styles`, `manifest`, `tests`
+- Subject in English or Chinese (consistent within this sub-repo)
+
+## Forbidden
+
+- Do not use axios or fetch directly
+- Do not call backend `agent/` service directly; route through Go backend
+- Do not hardcode backend URLs outside env variables
+- Do not add new top-level directories without updating this rules file
+- Do not use Options API for new components

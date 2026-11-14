@@ -1,0 +1,146 @@
+<template>
+  <view class="child-card" :class="{ active: isActive }" @click="onSelect">
+    <view class="avatar-wrap">
+      <image v-if="avatarUrl" :src="avatarUrl" class="avatar" mode="aspectFill" />
+      <view v-else class="avatar-placeholder">{{ initial }}</view>
+    </view>
+
+    <view class="info">
+      <text class="name">{{ child.name }}</text>
+      <text class="grade" @click.stop="onEdit">{{ child.grade || '未设置年级' }}</text>
+    </view>
+
+    <view class="edit-wrap" @click.stop="onEdit">
+      <button class="edit-btn">编辑</button>
+    </view>
+
+    <view v-if="isActive" class="check-badge">
+      <text class="check-mark">✓</text>
+    </view>
+  </view>
+</template>
+
+<script setup lang="uts">
+import { computed } from 'vue'
+import type { Child } from '@/api/child'
+
+const props = defineProps<{
+  child: Child
+  active: boolean
+}>()
+
+const emit = defineEmits<{
+  (e: 'select', id: number | string): void
+  (e: 'edit', id: number | string): void
+}>()
+
+const isActive = computed(() => props.active)
+// 后端 avatarUrl / avatar_url 两种命名都可能出现，统一在这里兜底
+const avatarUrl = computed(() => props.child.avatarUrl || props.child.avatar_url || '')
+const initial = computed(() => (props.child.name || '?').slice(0, 1))
+
+function onSelect() {
+  emit('select', props.child.id)
+}
+
+function onEdit() {
+  emit('edit', props.child.id)
+}
+</script>
+
+<style scoped lang="scss">
+.child-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 28rpx 32rpx;
+  background: #fff;
+  border-radius: 16rpx;
+  border: 2rpx solid #eee;
+  min-height: 88rpx;
+}
+
+// 选中态三重编码：描边 + 浅底 + 右上勾选徽章，不只依赖颜色
+.child-card.active {
+  border-color: #667eea;
+  border-width: 4rpx;
+  background: #f4f5ff;
+}
+
+.avatar-wrap {
+  margin-right: 24rpx;
+}
+
+.avatar {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 48rpx;
+}
+
+.avatar-placeholder {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 48rpx;
+  background: #c7d2fe;
+  color: #3730a3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36rpx;
+  font-weight: bold;
+}
+
+.info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+}
+
+.name {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #333;
+}
+
+.grade {
+  font-size: 26rpx;
+  color: #666;
+}
+
+.edit-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.edit-btn {
+  width: 120rpx;
+  height: 88rpx;
+  line-height: 88rpx;
+  padding: 0;
+  font-size: 26rpx;
+  color: #666;
+  background: #fff;
+  border: 2rpx solid #ddd;
+  border-radius: 12rpx;
+}
+
+.check-badge {
+  position: absolute;
+  top: 12rpx;
+  right: 12rpx;
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: 18rpx;
+  background: #667eea;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.check-mark {
+  font-size: 22rpx;
+  color: #fff;
+}
+</style>
